@@ -1,0 +1,483 @@
+# ============================================================================
+# Agentic OS - Label-based State Machine Definition
+# ============================================================================
+#
+# Labels serve as the Operating System's state management mechanism.
+# All automation MUST check labels to determine Issue/PR state and route accordingly.
+#
+# State Flow:
+#   📥 pending → 🔍 analyzing → 🏗️ implementing → 👀 reviewing → ✅ done
+#
+# Constitutional Requirement:
+#   "Everything starts with an Issue. Labels define the state."
+#
+# ============================================================================
+
+# ============================================================================
+# 1. STATE LABELS (Lifecycle Management)
+# ============================================================================
+
+- name: "📥 state:pending"
+  color: "E4E4E4"
+  description: "Issue created, awaiting triage"
+  aliases: ["pending", "triage"]
+
+- name: "🔍 state:analyzing"
+  color: "0E8A16"
+  description: "CoordinatorAgent analyzing dependencies and complexity"
+  aliases: ["analyzing", "analysis"]
+
+- name: "🏗️ state:implementing"
+  color: "1D76DB"
+  description: "Specialist Agents actively working on implementation"
+  aliases: ["implementing", "in-progress", "wip"]
+
+- name: "👀 state:reviewing"
+  color: "FBCA04"
+  description: "ReviewAgent conducting quality checks"
+  aliases: ["reviewing", "review", "qa"]
+
+- name: "✅ state:done"
+  color: "2EA44F"
+  description: "Completed successfully, merged to main"
+  aliases: ["done", "completed", "merged"]
+
+- name: "🔴 state:blocked"
+  color: "D73A4A"
+  description: "Blocked - requires Guardian intervention"
+  aliases: ["blocked", "stuck"]
+
+- name: "🛑 state:failed"
+  color: "B60205"
+  description: "Execution failed - error occurred"
+  aliases: ["failed", "error"]
+
+- name: "⏸️ state:paused"
+  color: "D4C5F9"
+  description: "Paused - waiting for dependencies or approval"
+  aliases: ["paused", "waiting"]
+
+# ============================================================================
+# 2. AGENT ASSIGNMENT LABELS
+# ============================================================================
+
+- name: "🤖 agent:coordinator"
+  color: "FF79C6"
+  description: "Assigned to CoordinatorAgent"
+  aliases: ["coordinator"]
+
+- name: "🤖 agent:codegen"
+  color: "00D9FF"
+  description: "Assigned to CodeGenAgent"
+  aliases: ["codegen"]
+
+- name: "🤖 agent:review"
+  color: "00FF88"
+  description: "Assigned to ReviewAgent"
+  aliases: ["review"]
+
+- name: "🤖 agent:issue"
+  color: "8B88FF"
+  description: "Assigned to IssueAgent"
+  aliases: ["issue-agent"]
+
+- name: "🤖 agent:pr"
+  color: "FF79C6"
+  description: "Assigned to PRAgent"
+  aliases: ["pr-agent"]
+
+- name: "🤖 agent:deployment"
+  color: "FF4444"
+  description: "Assigned to DeploymentAgent"
+  aliases: ["deployment"]
+
+# ============================================================================
+# 3. PRIORITY LABELS
+# ============================================================================
+
+- name: "🔥 priority:P0-Critical"
+  color: "B60205"
+  description: "Critical - Security, Production Down, Data Loss"
+  aliases: ["critical", "p0", "urgent"]
+
+- name: "⚠️ priority:P1-High"
+  color: "D93F0B"
+  description: "High - Major feature, significant bug"
+  aliases: ["high", "p1"]
+
+- name: "📊 priority:P2-Medium"
+  color: "FBCA04"
+  description: "Medium - Standard feature or bug"
+  aliases: ["medium", "p2"]
+
+- name: "📝 priority:P3-Low"
+  color: "0E8A16"
+  description: "Low - Nice-to-have, minor improvement"
+  aliases: ["low", "p3"]
+
+# ============================================================================
+# 4. TYPE LABELS (Issue Classification)
+# ============================================================================
+
+- name: "✨ type:feature"
+  color: "00D9FF"
+  description: "New feature or enhancement"
+  aliases: ["feature", "enhancement"]
+
+- name: "🐛 type:bug"
+  color: "D73A4A"
+  description: "Bug fix"
+  aliases: ["bug", "defect"]
+
+- name: "📚 type:docs"
+  color: "0075CA"
+  description: "Documentation improvement"
+  aliases: ["docs", "documentation"]
+
+- name: "🔧 type:refactor"
+  color: "FBCA04"
+  description: "Code refactoring"
+  aliases: ["refactor"]
+
+- name: "🧪 type:test"
+  color: "00FF88"
+  description: "Test addition or improvement"
+  aliases: ["test", "testing"]
+
+- name: "🏗️ type:architecture"
+  color: "8B88FF"
+  description: "Architecture design or system-level change"
+  aliases: ["architecture", "design"]
+
+- name: "🚀 type:deployment"
+  color: "FF4444"
+  description: "Deployment or infrastructure"
+  aliases: ["deployment", "infra"]
+
+# ============================================================================
+# 5. SEVERITY LABELS (Escalation)
+# ============================================================================
+
+- name: "🚨 severity:Sev.1-Critical"
+  color: "B60205"
+  description: "Critical - Immediate Guardian escalation required"
+  aliases: ["sev1", "critical-severity"]
+
+- name: "⚠️ severity:Sev.2-High"
+  color: "D93F0B"
+  description: "High - TechLead/CISO escalation recommended"
+  aliases: ["sev2", "high-severity"]
+
+- name: "📊 severity:Sev.3-Medium"
+  color: "FBCA04"
+  description: "Medium - Monitor closely"
+  aliases: ["sev3", "medium-severity"]
+
+- name: "📝 severity:Sev.4-Low"
+  color: "0E8A16"
+  description: "Low - Normal handling"
+  aliases: ["sev4", "low-severity"]
+
+# ============================================================================
+# 6. PHASE LABELS (Project Management)
+# ============================================================================
+
+- name: "🎯 phase:planning"
+  color: "D4C5F9"
+  description: "Planning phase"
+  aliases: ["planning"]
+
+- name: "🏗️ phase:implementation"
+  color: "1D76DB"
+  description: "Implementation phase"
+  aliases: ["implementation"]
+
+- name: "🧪 phase:testing"
+  color: "00FF88"
+  description: "Testing phase"
+  aliases: ["testing"]
+
+- name: "🚀 phase:deployment"
+  color: "FF4444"
+  description: "Deployment phase"
+  aliases: ["deployment-phase"]
+
+- name: "📊 phase:monitoring"
+  color: "0E8A16"
+  description: "Monitoring phase"
+  aliases: ["monitoring"]
+
+# ============================================================================
+# 7. SPECIAL OPERATION LABELS
+# ============================================================================
+
+- name: "🔐 security"
+  color: "B60205"
+  description: "Security-related issue - CISO escalation"
+  aliases: ["security", "vuln"]
+
+- name: "💰 cost-watch"
+  color: "FBCA04"
+  description: "High cost operation - budget monitoring"
+  aliases: ["cost", "expensive"]
+
+- name: "🔄 dependencies"
+  color: "8B88FF"
+  description: "Has dependencies - must resolve first"
+  aliases: ["deps", "dependency"]
+
+- name: "🎓 learning"
+  color: "7057FF"
+  description: "Learning task - may take longer"
+  aliases: ["learning", "research"]
+
+- name: "🔬 experiment"
+  color: "D4C5F9"
+  description: "Experimental - may fail"
+  aliases: ["experiment", "spike"]
+
+- name: "🚫 wontfix"
+  color: "E4E4E4"
+  description: "Will not be fixed - closed"
+  aliases: ["wontfix", "declined"]
+
+- name: "🔁 duplicate"
+  color: "CFD3D7"
+  description: "Duplicate of another issue"
+  aliases: ["duplicate"]
+
+# ============================================================================
+# 8. AUTOMATED TRIGGER LABELS
+# ============================================================================
+
+- name: "🤖 trigger:agent-execute"
+  color: "FF79C6"
+  description: "Trigger: Execute autonomous agents"
+  aliases: ["agent-execute", "execute"]
+
+- name: "📊 trigger:generate-report"
+  color: "0E8A16"
+  description: "Trigger: Generate weekly report"
+  aliases: ["report", "generate-report"]
+
+- name: "🚀 trigger:deploy-staging"
+  color: "FBCA04"
+  description: "Trigger: Deploy to staging environment"
+  aliases: ["deploy-staging"]
+
+- name: "🚀 trigger:deploy-production"
+  color: "D73A4A"
+  description: "Trigger: Deploy to production (requires Guardian approval)"
+  aliases: ["deploy-production"]
+
+# ============================================================================
+# 9. QUALITY LABELS
+# ============================================================================
+
+- name: "⭐ quality:excellent"
+  color: "2EA44F"
+  description: "Quality Score: 90-100 (Excellent)"
+  aliases: ["excellent"]
+
+- name: "✅ quality:good"
+  color: "00FF88"
+  description: "Quality Score: 80-89 (Good)"
+  aliases: ["good"]
+
+- name: "⚠️ quality:needs-improvement"
+  color: "FBCA04"
+  description: "Quality Score: 60-79 (Needs Improvement)"
+  aliases: ["needs-improvement"]
+
+- name: "🔴 quality:poor"
+  color: "D73A4A"
+  description: "Quality Score: <60 (Poor - Requires Rework)"
+  aliases: ["poor"]
+
+# ============================================================================
+# 10. COMMUNITY LABELS
+# ============================================================================
+
+- name: "👋 good-first-issue"
+  color: "7057FF"
+  description: "Good for newcomers"
+  aliases: ["good-first-issue", "beginner"]
+
+- name: "🙏 help-wanted"
+  color: "0E8A16"
+  description: "Community help wanted"
+  aliases: ["help-wanted"]
+
+- name: "❓ question"
+  color: "D4C5F9"
+  description: "Question or discussion"
+  aliases: ["question"]
+
+- name: "💬 discussion"
+  color: "D4C5F9"
+  description: "Open discussion"
+  aliases: ["discussion"]
+
+# ============================================================================
+# 11. COMPLEXITY LABELS (Task Size Estimation)
+# ============================================================================
+
+- name: "📏 complexity:small"
+  color: "C5DEF5"
+  description: "Small task - 1-2 hours"
+  aliases: ["small", "xs"]
+
+- name: "📐 complexity:medium"
+  color: "54AEFF"
+  description: "Medium task - 0.5-1 day"
+  aliases: ["medium", "md"]
+
+- name: "📊 complexity:large"
+  color: "0969DA"
+  description: "Large task - 2-3 days"
+  aliases: ["large", "lg"]
+
+- name: "📈 complexity:xlarge"
+  color: "0550AE"
+  description: "Extra large task - 1 week+"
+  aliases: ["xlarge", "xl"]
+
+# ============================================================================
+# 12. EFFORT LABELS (Time Estimation)
+# ============================================================================
+
+- name: "⏱️ effort:1h"
+  color: "E1E4E8"
+  description: "Estimated effort: 1 hour"
+  aliases: ["1h", "1hour"]
+
+- name: "⏱️ effort:4h"
+  color: "D1D5DA"
+  description: "Estimated effort: 4 hours"
+  aliases: ["4h", "4hours"]
+
+- name: "📅 effort:1d"
+  color: "959DA5"
+  description: "Estimated effort: 1 day"
+  aliases: ["1d", "1day"]
+
+- name: "📅 effort:3d"
+  color: "6A737D"
+  description: "Estimated effort: 3 days"
+  aliases: ["3d", "3days"]
+
+- name: "📆 effort:1w"
+  color: "586069"
+  description: "Estimated effort: 1 week"
+  aliases: ["1w", "1week"]
+
+- name: "📆 effort:2w"
+  color: "24292E"
+  description: "Estimated effort: 2 weeks"
+  aliases: ["2w", "2weeks"]
+
+# ============================================================================
+# 13. IMPACT LABELS (Change Scope)
+# ============================================================================
+
+- name: "💥 impact:breaking"
+  color: "B60205"
+  description: "Breaking change - Major version bump required"
+  aliases: ["breaking", "breaking-change"]
+
+- name: "🔶 impact:major"
+  color: "D93F0B"
+  description: "Major change - Minor version bump"
+  aliases: ["major", "major-change"]
+
+- name: "🔸 impact:minor"
+  color: "FBCA04"
+  description: "Minor change - Patch version bump"
+  aliases: ["minor", "minor-change"]
+
+- name: "🔹 impact:patch"
+  color: "0E8A16"
+  description: "Patch change - Bug fix only"
+  aliases: ["patch", "patch-change"]
+
+# ============================================================================
+# 14. CATEGORY LABELS (Technical Domain)
+# ============================================================================
+
+- name: "🎨 category:frontend"
+  color: "61DAFB"
+  description: "Frontend - UI/UX, React, CSS"
+  aliases: ["frontend", "ui", "ux"]
+
+- name: "⚙️ category:backend"
+  color: "68A063"
+  description: "Backend - API, Database, Server"
+  aliases: ["backend", "api", "server"]
+
+- name: "🏗️ category:infra"
+  color: "326CE5"
+  description: "Infrastructure - DevOps, CI/CD, Cloud"
+  aliases: ["infra", "infrastructure", "devops"]
+
+- name: "🛠️ category:dx"
+  color: "FF6B6B"
+  description: "Developer Experience - Tooling, DX improvements"
+  aliases: ["dx", "developer-experience", "tooling"]
+
+- name: "🔐 category:security"
+  color: "B60205"
+  description: "Security - Vulnerabilities, Auth, Encryption"
+  aliases: ["sec", "security-category"]
+
+# ============================================================================
+# 15. BLOCKED SUBCATEGORIES (Detailed Blocking Reasons)
+# ============================================================================
+
+- name: "🔒 blocked:waiting-review"
+  color: "D93F0B"
+  description: "Blocked - Waiting for code review"
+  aliases: ["waiting-review", "needs-review"]
+
+- name: "🔒 blocked:waiting-deployment"
+  color: "D93F0B"
+  description: "Blocked - Waiting for deployment to complete"
+  aliases: ["waiting-deployment", "deploy-pending"]
+
+- name: "🔒 blocked:waiting-feedback"
+  color: "D93F0B"
+  description: "Blocked - Waiting for user/stakeholder feedback"
+  aliases: ["waiting-feedback", "needs-feedback"]
+
+# ============================================================================
+# STATE TRANSITION RULES
+# ============================================================================
+#
+# 1. pending → analyzing
+#    - Trigger: CoordinatorAgent assigned
+#    - Action: Analyze dependencies, complexity
+#
+# 2. analyzing → implementing
+#    - Trigger: Analysis complete, specialists assigned
+#    - Action: CodeGenAgent/PRAgent start work
+#
+# 3. implementing → reviewing
+#    - Trigger: PR created
+#    - Action: ReviewAgent starts quality checks
+#
+# 4. reviewing → done
+#    - Trigger: Quality score ≥ 80, PR merged
+#    - Action: Close Issue, update metrics
+#
+# 5. ANY → blocked
+#    - Trigger: Error, missing dependency, approval needed
+#    - Action: Escalate to Guardian
+#
+# 6. ANY → failed
+#    - Trigger: Unrecoverable error
+#    - Action: Log error, escalate
+#
+# 7. blocked/failed → analyzing
+#    - Trigger: Guardian resolved, ready to retry
+#    - Action: Restart from analysis
+#
+# ============================================================================
