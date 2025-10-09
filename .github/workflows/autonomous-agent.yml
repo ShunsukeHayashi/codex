@@ -1,0 +1,324 @@
+name: 🤖 Autonomous Agent Trigger
+
+# Lightweight agent trigger for Codex project
+# Integrates with Miyabi framework
+
+on:
+  issues:
+    types: [opened, labeled, edited]
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue number to process'
+        required: true
+        type: number
+
+concurrency:
+  group: agent-${{ github.event.issue.number || inputs.issue_number }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  # ==========================================================================
+  # 1. Check if agent should execute
+  # ==========================================================================
+
+  check-trigger:
+    name: Check Agent Trigger
+    runs-on: ubuntu-latest
+    outputs:
+      should_execute: ${{ steps.check.outputs.should_execute }}
+      issue_number: ${{ steps.check.outputs.issue_number }}
+      trigger_type: ${{ steps.check.outputs.trigger_type }}
+
+    steps:
+      - name: Check trigger conditions
+        id: check
+        run: |
+          SHOULD_EXECUTE="false"
+          ISSUE_NUMBER=""
+          TRIGGER_TYPE=""
+
+          # Manual trigger
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            SHOULD_EXECUTE="true"
+            ISSUE_NUMBER="${{ github.event.inputs.issue_number }}"
+            TRIGGER_TYPE="manual"
+            echo "✅ Manual trigger for issue #${ISSUE_NUMBER}"
+          fi
+
+          # Label trigger: agent:coordinator or trigger:agent-execute
+          if [ "${{ github.event_name }}" = "issues" ] && [ "${{ github.event.action }}" = "labeled" ]; then
+            LABEL_NAME="${{ github.event.label.name }}"
+            if echo "$LABEL_NAME" | grep -E "(agent:coordinator|trigger:agent-execute)" > /dev/null; then
+              SHOULD_EXECUTE="true"
+              ISSUE_NUMBER="${{ github.event.issue.number }}"
+              TRIGGER_TYPE="label"
+              echo "✅ Label trigger ($LABEL_NAME) for issue #${ISSUE_NUMBER}"
+            fi
+          fi
+
+          # Comment trigger: /agent command
+          if [ "${{ github.event_name }}" = "issue_comment" ]; then
+            COMMENT="${{ github.event.comment.body }}"
+            if echo "$COMMENT" | grep -q "^/agent"; then
+              SHOULD_EXECUTE="true"
+              ISSUE_NUMBER="${{ github.event.issue.number }}"
+              TRIGGER_TYPE="comment"
+              echo "✅ Comment trigger (/agent) for issue #${ISSUE_NUMBER}"
+            fi
+          fi
+
+          echo "should_execute=${SHOULD_EXECUTE}" >> $GITHUB_OUTPUT
+          echo "issue_number=${ISSUE_NUMBER}" >> $GITHUB_OUTPUT
+          echo "trigger_type=${TRIGGER_TYPE}" >> $GITHUB_OUTPUT
+
+  # ==========================================================================
+  # 2. Agent Execution (Lightweight - Miyabi Integration)
+  # ==========================================================================
+
+  execute-agent:
+    name: Execute Autonomous Agent
+    runs-on: ubuntu-latest
+    needs: check-trigger
+    if: needs.check-trigger.outputs.should_execute == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Notify agent execution start
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = ${{ needs.check-trigger.outputs.issue_number }};
+            const triggerType = '${{ needs.check-trigger.outputs.trigger_type }}';
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              issue_number: issueNumber,
+              body: `## 🤖 Autonomous Agent Execution Started
+
+**Trigger**: ${triggerType}
+**Issue**: #${issueNumber}
+**Workflow Run**: [${context.runId}](https://github.com/${context.repo.owner}/${context.repo.name}/actions/runs/${context.runId})
+
+### Execution Plan
+
+1. 🔍 **IssueAgent**: Analyze and classify issue
+2. 🏗️ **CoordinatorAgent**: Task decomposition and DAG generation
+3. 💻 **CodeGenAgent**: Generate implementation code
+4. ✅ **ReviewAgent**: Quality check (≥80 score required)
+5. 🧪 **TestAgent**: Run tests and coverage check
+6. 📝 **PRAgent**: Create Draft Pull Request
+
+### Status
+
+⏳ Agent execution in progress...
+
+---
+*Automated by [Autonomous Agent](../.github/workflows/autonomous-agent.yml)*`
+            });
+
+      - name: Add executing labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              issue_number: ${{ needs.check-trigger.outputs.issue_number }},
+              labels: ['🤖 agent:coordinator', '🏗️ state:implementing']
+            });
+
+      # ==========================================================================
+      # Miyabi CLI Integration (if available)
+      # ==========================================================================
+
+      - name: Setup Node.js for Miyabi
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check Miyabi availability
+        id: check_miyabi
+        run: |
+          if npx miyabi@latest --version 2>/dev/null; then
+            echo "available=true" >> $GITHUB_OUTPUT
+            echo "✅ Miyabi CLI available"
+          else
+            echo "available=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ Miyabi CLI not available - will create manual instructions"
+          fi
+
+      - name: Execute Miyabi Agent (if available)
+        if: steps.check_miyabi.outputs.available == 'true'
+        id: miyabi_exec
+        run: |
+          echo "🚀 Executing Miyabi Agent for Issue #${{ needs.check-trigger.outputs.issue_number }}"
+
+          # Run Miyabi agent
+          npx miyabi@latest agent run \
+            --issue ${{ needs.check-trigger.outputs.issue_number }} \
+            --dry-run \
+            || echo "⚠️ Miyabi execution failed - continuing with manual flow"
+        continue-on-error: true
+
+      # ==========================================================================
+      # Manual Execution Instructions (Fallback)
+      # ==========================================================================
+
+      - name: Provide manual execution instructions
+        if: steps.check_miyabi.outputs.available != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              issue_number: ${{ needs.check-trigger.outputs.issue_number }},
+              body: `## 📋 Manual Agent Execution Instructions
+
+Automated agent execution is not yet fully configured. Please follow these steps:
+
+### Option 1: Use Miyabi CLI
+
+\`\`\`bash
+# Install Miyabi
+npx miyabi@latest install
+
+# Run agent for this issue
+npx miyabi@latest agent run --issue ${{ needs.check-trigger.outputs.issue_number }}
+\`\`\`
+
+### Option 2: Use Claude Code Directly
+
+1. Open this repository in Claude Code
+2. Use slash command:
+   \`\`\`
+   /agent-run
+   \`\`\`
+3. Select Issue #${{ needs.check-trigger.outputs.issue_number }}
+
+### Option 3: Manual Implementation
+
+1. Read the issue description carefully
+2. Implement the required changes
+3. Create tests
+4. Open a Pull Request
+5. Link to this issue with \`Closes #${{ needs.check-trigger.outputs.issue_number }}\`
+
+---
+
+### Agent Workflow Reference
+
+The following agents should be executed in order:
+
+1. **IssueAgent** - Analyze and add appropriate labels
+2. **CoordinatorAgent** - Break down into subtasks
+3. **CodeGenAgent** - Generate implementation
+4. **ReviewAgent** - Check quality (≥80 score)
+5. **TestAgent** - Run tests
+6. **PRAgent** - Create Pull Request
+
+---
+*Automated by [Autonomous Agent](../.github/workflows/autonomous-agent.yml)*`
+            });
+
+      # ==========================================================================
+      # Completion Notification
+      # ==========================================================================
+
+      - name: Notify completion
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const status = '${{ job.status }}';
+            const emoji = status === 'success' ? '✅' : '⚠️';
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              issue_number: ${{ needs.check-trigger.outputs.issue_number }},
+              body: `${emoji} **Agent Execution Trigger Complete**
+
+**Status**: ${status}
+**Duration**: Triggered at ${new Date().toISOString()}
+
+${status === 'success'
+  ? 'Agent execution workflow has been triggered. Check comments above for next steps.'
+  : 'Agent execution encountered an issue. Please check the workflow logs.'}
+
+[View Workflow Run →](https://github.com/${context.repo.owner}/${context.repo.name}/actions/runs/${context.runId})
+
+---
+*Automated by [Autonomous Agent](../.github/workflows/autonomous-agent.yml)*`
+            });
+
+  # ==========================================================================
+  # 3. Create Agent Execution Report
+  # ==========================================================================
+
+  create-report:
+    name: Create Execution Report
+    runs-on: ubuntu-latest
+    needs: [check-trigger, execute-agent]
+    if: always() && needs.check-trigger.outputs.should_execute == 'true'
+
+    steps:
+      - name: Generate execution report
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = ${{ needs.check-trigger.outputs.issue_number }};
+
+            // Get issue details
+            const issue = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              issue_number: issueNumber
+            });
+
+            // Create report
+            const report = `## 📊 Agent Execution Report
+
+**Issue**: #${issueNumber} - ${issue.data.title}
+**Trigger Type**: ${{ needs.check-trigger.outputs.trigger_type }}
+**Workflow Run**: ${context.runId}
+**Timestamp**: ${new Date().toISOString()}
+
+### Labels Applied
+
+${issue.data.labels.map(l => `- \`${l.name}\``).join('\n') || '- None'}
+
+### Estimated Complexity
+
+${issue.data.labels.find(l => l.name.includes('complexity:'))
+  ? issue.data.labels.find(l => l.name.includes('complexity:')).name
+  : 'Not yet estimated'}
+
+### Next Actions
+
+1. Wait for agent implementation
+2. Review generated code/PR
+3. Provide feedback or approve
+4. Merge when ready
+
+---
+*Report generated by [Autonomous Agent](../.github/workflows/autonomous-agent.yml)*`;
+
+            // Post as comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              issue_number: issueNumber,
+              body: report
+            });

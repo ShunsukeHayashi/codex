@@ -4,3 +4,25 @@ Copyright 2025 OpenAI
 This project includes code derived from [Ratatui](https://github.com/ratatui/ratatui), licensed under the MIT license.
 Copyright (c) 2016-2022 Florian Dehau
 Copyright (c) 2023-2025 The Ratatui Developers
+
+---
+
+FORK MODIFICATIONS
+
+This is a fork of the original Codex CLI project:
+- Original Repository: https://github.com/openai/codex
+- Fork Repository: https://github.com/ShunsukeHayashi/codex
+- Fork Maintainer: Shunsuke Hayashi
+- Fork Date: 2025-10-10
+
+Modifications include:
+- Integration with Miyabi autonomous agent framework (codex-miyabi/)
+- MCP Server implementation for multi-agent coordination
+- GitHub Projects V2 integration
+- See INTEGRATION_PLAN_MIYABI.md for detailed changes
+
+All fork modifications are licensed under Apache License 2.0 (same as original).
+
+Additional components:
+- Miyabi Framework: Based on https://github.com/ShunsukeHayashi/Autonomous-Operations
+- Miyabi License: MIT (see codex-miyabi/LICENSE for details)

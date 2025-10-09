@@ -1,0 +1,714 @@
+---
+# Codex Agentic - Miyabi Integration Milestones
+# Complete DAG Execution Plan with 7 Integration Phases
+# Generated: 2025-10-10
+# Project: Codex Agentic (OpenAI Codex CLI + Miyabi Framework)
+
+metadata:
+  projectName: "Codex Agentic"
+  projectVersion: "0.1.0"
+  generatedDate: "2025-10-10"
+  projectLead: "@ShunsukeHayashi"
+  totalPhases: 7
+  totalEstimatedDays: 32
+  parallelEstimatedDays: 22
+  efficiencyGain: "31%"
+  maxConcurrency: 3
+
+# ============================================================================
+# MILESTONES
+# ============================================================================
+
+milestones:
+  - id: M0
+    name: "Milestone 0: Development Environment Ready"
+    description: "Complete development environment setup for hybrid Rust+TypeScript project"
+    trigger: "Phase 0 completion"
+    approvalRequired: false
+    estimatedDay: 2
+    deliverables:
+      - "codex-miyabi/ directory structure created"
+      - "Dependencies installed (Rust, Node.js, pnpm)"
+      - "pnpm workspace configured"
+      - "Both Rust and TypeScript build successfully"
+      - "Baseline tests passing"
+    acceptanceCriteria:
+      - "cargo build --release succeeds (Rust)"
+      - "pnpm run build succeeds (TypeScript)"
+      - "All existing tests pass"
+    nextMilestone: M1
+
+  - id: M1
+    name: "Milestone 1: MCP Server Operational"
+    description: "Miyabi MCP server functional and integrated with Codex CLI"
+    trigger: "Phase 1 completion"
+    approvalRequired: true
+    guardianApproval: "@ShunsukeHayashi"
+    estimatedDay: 7
+    deliverables:
+      - "MCP server implemented in TypeScript"
+      - "MCP tools defined (agent.*, github.*, project.*)"
+      - "Codex CLI configured to connect to MCP server"
+      - "Integration tests passing"
+    acceptanceCriteria:
+      - "MCP server starts successfully"
+      - "All MCP tools respond to requests"
+      - "Codex CLI can execute agent operations via MCP"
+      - "Response time <100ms per tool call"
+    nextMilestone: M2
+
+  - id: M2
+    name: "Milestone 2: Multi-Agent System Active"
+    description: "All 7 specialist agents operational with parallel execution"
+    trigger: "Phase 2 completion"
+    approvalRequired: true
+    guardianApproval: "@ShunsukeHayashi"
+    estimatedDay: 14
+    deliverables:
+      - "7 specialist agents implemented"
+      - "Agent SDK functional"
+      - "DAG-based coordinator working"
+      - "Parallel execution engine (max 3 concurrent)"
+      - "Integration tests ≥80% coverage"
+    acceptanceCriteria:
+      - "All agents can be invoked independently"
+      - "CoordinatorAgent orchestrates multi-agent workflows"
+      - "Parallel execution achieves ≥70% efficiency"
+      - "Agent success rate ≥95%"
+    nextMilestone: M3
+
+  - id: M3
+    name: "Milestone 3: GitHub Integration Complete"
+    description: "Full GitHub integration with Projects V2, Issues, PRs, and 53-label system"
+    trigger: "Phase 3 completion"
+    approvalRequired: false
+    estimatedDay: 19
+    deliverables:
+      - "GitHub API client implemented"
+      - "Projects V2 integration working"
+      - "53-label state machine operational"
+      - "Issue/PR automation functional"
+    acceptanceCriteria:
+      - "GitHub API success rate ≥99%"
+      - "Projects V2 updates working"
+      - "Label automation operational"
+      - "Issue → PR workflow end-to-end tested"
+    nextMilestone: M4
+
+  - id: M4
+    name: "Milestone 4: TypeScript SDK Published"
+    description: "Programmatic API available for Codex Agentic features"
+    trigger: "Phase 4 completion"
+    approvalRequired: false
+    estimatedDay: 23
+    deliverables:
+      - "TypeScript SDK with Miyabi features"
+      - "Programmatic API documented"
+      - "Usage examples created"
+      - "npm package ready (not yet published)"
+    acceptanceCriteria:
+      - "SDK compiles without errors"
+      - "All APIs functional"
+      - "Documentation complete"
+      - "Test coverage ≥80%"
+    nextMilestone: M5
+
+  - id: M5
+    name: "Milestone 5: Documentation & UI Complete"
+    description: "Comprehensive documentation and enhanced TUI with Miyabi integration"
+    trigger: "Phase 5 completion"
+    approvalRequired: false
+    estimatedDay: 26
+    deliverables:
+      - "Integration guide complete"
+      - "Auto-doc generator functional"
+      - "TUI enhanced with Miyabi status"
+      - "Tutorials and examples created"
+    acceptanceCriteria:
+      - "All documentation complete"
+      - "Auto-doc generator working"
+      - "TUI enhancements functional"
+      - "Examples tested and verified"
+    nextMilestone: M6
+
+  - id: M6
+    name: "Milestone 6: Security Hardened"
+    description: "Security scanning, SBOM generation, and compliance features operational"
+    trigger: "Phase 6 completion"
+    approvalRequired: true
+    guardianApproval: "@ShunsukeHayashi (Security Lead)"
+    severity: "Sev.1-Critical"
+    estimatedDay: 32
+    deliverables:
+      - "Gitleaks, CodeQL, npm audit integrated"
+      - "SBOM generation working"
+      - "Security validation passing"
+      - "No critical/high vulnerabilities"
+    acceptanceCriteria:
+      - "All security scans operational"
+      - "SBOM generation working"
+      - "Zero critical vulnerabilities"
+      - "License compliance checks passing"
+    nextMilestone: "Project Complete"
+
+# ============================================================================
+# DAG STRUCTURE (Dependency Graph)
+# ============================================================================
+
+dag:
+  # Level 0: Foundation (Phase 0 only)
+  level_0:
+    description: "Foundation - Environment Setup"
+    parallelizable: false
+    concurrency: 1
+    estimatedDays: 2
+    guardianApprovalRequired: false
+    dependencies: []
+
+    phases:
+      - id: phase-0
+        title: "Phase 0: Environment Setup"
+        priority: P0-Immediate
+        severity: Sev.2-High
+        agent: SetupAgent
+        estimatedDays: 2
+        guardianApproval: false
+        reason: "Foundation for all subsequent phases"
+
+  # Level 1: MCP Server (Phase 1 only - depends on Phase 0)
+  level_1:
+    description: "MCP Server Implementation"
+    parallelizable: false
+    concurrency: 1
+    estimatedDays: 5
+    guardianApprovalRequired: true
+    dependencies: [phase-0]
+
+    phases:
+      - id: phase-1
+        title: "Phase 1: MCP Server Implementation"
+        priority: P0-Immediate
+        severity: Sev.1-Critical
+        agent: MCPAgent
+        estimatedDays: 5
+        guardianApproval: true
+        reason: "Critical Path - Required for Phase 2"
+
+  # Level 2: Agent Integration (Phase 2 - depends on Phase 1)
+  level_2:
+    description: "Multi-Agent System Implementation"
+    parallelizable: false
+    concurrency: 1
+    estimatedDays: 7
+    guardianApprovalRequired: true
+    dependencies: [phase-1]
+
+    phases:
+      - id: phase-2
+        title: "Phase 2: Agent Integration"
+        priority: P0-Immediate
+        severity: Sev.1-Critical
+        agent: IntegrationAgent
+        estimatedDays: 7
+        guardianApproval: true
+        reason: "Core multi-agent functionality"
+
+  # Level 3: Parallel Integrations (Phases 3, 4 can run in parallel after Phase 2)
+  level_3:
+    description: "GitHub & SDK Integration"
+    parallelizable: true
+    concurrency: 2
+    estimatedDays: 5
+    guardianApprovalRequired: false
+    dependencies: [phase-2]
+
+    phases:
+      - id: phase-3
+        title: "Phase 3: GitHub Integration"
+        priority: P1-High
+        severity: Sev.2-High
+        agent: GitHubAgent
+        estimatedDays: 5
+        guardianApproval: false
+        reason: "Independent - GitHub operations"
+
+      - id: phase-4
+        title: "Phase 4: TypeScript SDK"
+        priority: P1-High
+        severity: Sev.2-High
+        agent: SDKAgent
+        estimatedDays: 4
+        guardianApproval: false
+        reason: "Independent - Programmatic API"
+
+  # Level 4: Documentation (Phase 5 - depends on Phases 3, 4)
+  level_4:
+    description: "Documentation & UI Enhancement"
+    parallelizable: false
+    concurrency: 1
+    estimatedDays: 3
+    guardianApprovalRequired: false
+    dependencies: [phase-3, phase-4]
+
+    phases:
+      - id: phase-5
+        title: "Phase 5: Documentation & UI"
+        priority: P2-Medium
+        severity: Sev.3-Medium
+        agent: DocAgent
+        estimatedDays: 3
+        guardianApproval: false
+        reason: "Documentation for completed features"
+
+  # Level 5: Security (Phase 6 - depends on all previous phases)
+  level_5:
+    description: "Security Hardening"
+    parallelizable: false
+    concurrency: 1
+    estimatedDays: 7
+    guardianApprovalRequired: true
+    dependencies: [phase-0, phase-1, phase-2, phase-3, phase-4, phase-5]
+
+    phases:
+      - id: phase-6
+        title: "Phase 6: Security Features"
+        priority: P0-Immediate
+        severity: Sev.1-Critical
+        agent: SecurityAgent
+        estimatedDays: 7
+        guardianApproval: true
+        reason: "Final security validation for entire system"
+
+# ============================================================================
+# DEPENDENCY EDGES
+# ============================================================================
+
+edges:
+  - from: phase-0
+    to: phase-1
+    reason: "MCP server needs environment setup complete"
+
+  - from: phase-1
+    to: phase-2
+    reason: "Agents need MCP server operational"
+
+  - from: phase-2
+    to: phase-3
+    reason: "GitHub integration needs agents functional"
+
+  - from: phase-2
+    to: phase-4
+    reason: "SDK needs agents functional"
+
+  - from: phase-3
+    to: phase-5
+    reason: "Documentation needs GitHub features complete"
+
+  - from: phase-4
+    to: phase-5
+    reason: "Documentation needs SDK complete"
+
+  - from: phase-5
+    to: phase-6
+    reason: "Security scan needs all code complete"
+
+# ============================================================================
+# CRITICAL PATH ANALYSIS
+# ============================================================================
+
+criticalPath:
+  path: [phase-0, phase-1, phase-2, phase-3, phase-5, phase-6]
+  totalDays: 29
+  description: "Environment → MCP → Agents → GitHub → Docs → Security"
+
+  bottlenecks:
+    - phase: phase-1
+      reason: "MCP server blocks all agent work (Phase 2)"
+      mitigation: "Assign experienced MCPAgent, allocate full 5 days"
+      impact: "High - blocks critical path"
+
+    - phase: phase-2
+      reason: "Agent integration blocks GitHub and SDK (Phases 3, 4)"
+      mitigation: "Comprehensive testing, incremental implementation"
+      impact: "High - blocks parallel work"
+
+    - phase: phase-6
+      reason: "Security validation blocks project completion"
+      mitigation: "Early security review, continuous scanning"
+      impact: "Critical - final gate"
+
+# ============================================================================
+# PARALLEL EXECUTION GROUPS
+# ============================================================================
+
+parallelExecutionGroups:
+  - group: "Group 1: Foundation"
+    phases: [phase-0]
+    concurrency: 1
+    estimatedDays: 2
+    reason: "Setup required before all work"
+    recommendation: "Complete before starting Phase 1"
+
+  - group: "Group 2: Critical Path Core"
+    phases: [phase-1, phase-2]
+    concurrency: 1
+    estimatedDays: 12
+    reason: "Sequential dependencies - MCP → Agents"
+    recommendation: "Focus on quality - these block everything else"
+
+  - group: "Group 3: Parallel Integrations"
+    phases: [phase-3, phase-4]
+    concurrency: 2
+    estimatedDays: 5
+    reason: "Both depend on Phase 2, but independent of each other"
+    recommendation: "Run in parallel to save 4 days"
+
+  - group: "Group 4: Documentation"
+    phases: [phase-5]
+    concurrency: 1
+    estimatedDays: 3
+    reason: "Depends on Phases 3, 4 completion"
+    recommendation: "Ensure all features documented"
+
+  - group: "Group 5: Final Security"
+    phases: [phase-6]
+    concurrency: 1
+    estimatedDays: 7
+    reason: "Validates entire system"
+    recommendation: "Final Guardian approval required"
+
+# ============================================================================
+# EXECUTION SCHEDULE
+# ============================================================================
+
+executionSchedule:
+  - stage: "Stage 0: Foundation (Week 1 - Days 1-2)"
+    startCondition: "Immediate start - No blockers"
+    estimatedDuration: "2 days"
+    recommendedConcurrency: 1
+    guardianCheckpoint: "None"
+
+    phases:
+      - phase-0
+
+    milestones:
+      - name: M0
+        trigger: "Phase 0 completion"
+        approvalRequired: false
+        checkpoints:
+          - "Both Rust and TypeScript build successfully"
+          - "pnpm workspace configured"
+          - "All dependencies installed"
+
+  - stage: "Stage 1: MCP Server (Week 1-2 - Days 3-7)"
+    startCondition: "Phase 0 completed"
+    estimatedDuration: "5 days"
+    recommendedConcurrency: 1
+    guardianCheckpoint: "After Phase 1 completion (M1)"
+
+    phases:
+      - phase-1
+
+    milestones:
+      - name: M1
+        trigger: "Phase 1 completion"
+        approvalRequired: true
+        checkpoints:
+          - "MCP server starts and responds"
+          - "All MCP tools functional"
+          - "Codex CLI can connect"
+          - "Integration tests passing"
+
+  - stage: "Stage 2: Agent System (Week 2-3 - Days 8-14)"
+    startCondition: "Phase 1 completed + M1 approved"
+    estimatedDuration: "7 days"
+    recommendedConcurrency: 1
+    guardianCheckpoint: "After Phase 2 completion (M2)"
+
+    phases:
+      - phase-2
+
+    milestones:
+      - name: M2
+        trigger: "Phase 2 completion"
+        approvalRequired: true
+        checkpoints:
+          - "All 7 agents implemented"
+          - "Coordinator orchestrates workflows"
+          - "Parallel execution working"
+          - "Test coverage ≥80%"
+
+  - stage: "Stage 3: Parallel Integrations (Week 3 - Days 15-19)"
+    startCondition: "Phase 2 completed + M2 approved"
+    estimatedDuration: "5 days (parallel)"
+    recommendedConcurrency: 2
+    guardianCheckpoint: "After Phases 3, 4 completion"
+
+    phases:
+      - phase-3  # GitHub Integration
+      - phase-4  # TypeScript SDK
+
+    milestones:
+      - name: M3
+        trigger: "Phase 3 completion"
+        approvalRequired: false
+        checkpoints:
+          - "GitHub API operational"
+          - "Projects V2 working"
+          - "Label system functional"
+
+      - name: M4
+        trigger: "Phase 4 completion"
+        approvalRequired: false
+        checkpoints:
+          - "SDK compiles without errors"
+          - "All APIs documented"
+          - "Examples functional"
+
+  - stage: "Stage 4: Documentation (Week 4 - Days 20-22)"
+    startCondition: "Phases 3, 4 completed"
+    estimatedDuration: "3 days"
+    recommendedConcurrency: 1
+    guardianCheckpoint: "None"
+
+    phases:
+      - phase-5
+
+    milestones:
+      - name: M5
+        trigger: "Phase 5 completion"
+        approvalRequired: false
+        checkpoints:
+          - "All documentation complete"
+          - "Auto-doc generator working"
+          - "TUI enhancements functional"
+
+  - stage: "Stage 5: Security Hardening (Week 4-5 - Days 23-29)"
+    startCondition: "All Phases 0-5 completed"
+    estimatedDuration: "7 days"
+    recommendedConcurrency: 1
+    guardianCheckpoint: "Final approval (M6)"
+
+    phases:
+      - phase-6
+
+    milestones:
+      - name: M6
+        trigger: "Phase 6 completion"
+        approvalRequired: true
+        checkpoints:
+          - "All security scans passing"
+          - "Zero critical vulnerabilities"
+          - "SBOM generated"
+          - "License compliance verified"
+
+# ============================================================================
+# GUARDIAN CHECKPOINTS
+# ============================================================================
+
+guardianCheckpoints:
+  - checkpoint: M1
+    name: "MCP Server Operational"
+    trigger: "Phase 1 completion"
+    approvalRequired: true
+    estimatedDay: 7
+    approver: "@ShunsukeHayashi"
+    checklist:
+      - "MCP server starts successfully"
+      - "All tools respond to requests"
+      - "Performance acceptable (<100ms)"
+      - "Integration tests passing"
+
+  - checkpoint: M2
+    name: "Multi-Agent System Active"
+    trigger: "Phase 2 completion"
+    approvalRequired: true
+    estimatedDay: 14
+    approver: "@ShunsukeHayashi"
+    checklist:
+      - "All 7 agents functional"
+      - "Coordination working"
+      - "Parallel execution efficient"
+      - "Test coverage ≥80%"
+
+  - checkpoint: M6
+    name: "Security Hardened"
+    trigger: "Phase 6 completion"
+    approvalRequired: true
+    estimatedDay: 32
+    approver: "@ShunsukeHayashi (Security Lead)"
+    severity: "Sev.1-Critical"
+    checklist:
+      - "All security scans operational"
+      - "Zero critical/high vulnerabilities"
+      - "SBOM generated successfully"
+      - "License compliance verified"
+      - "Ready for initial release"
+
+# ============================================================================
+# RISK ANALYSIS
+# ============================================================================
+
+riskAnalysis:
+  circularDependencies: "NONE DETECTED"
+
+  criticalPath: [phase-0, phase-1, phase-2, phase-3, phase-5, phase-6]
+
+  bottlenecks:
+    - phase: phase-1
+      reason: "MCP server blocks all agent work"
+      impact: "High"
+      mitigation: "Experienced MCPAgent, full 5-day allocation"
+
+    - phase: phase-2
+      reason: "Agent integration complexity high"
+      impact: "High"
+      mitigation: "Incremental implementation, continuous testing"
+
+  highRiskPhases:
+    - phase: phase-2
+      reason: "Complex multi-agent coordination logic"
+      impact: "High"
+      mitigation: "Comprehensive unit/integration tests, code review"
+
+    - phase: phase-6
+      reason: "Security findings may block completion"
+      impact: "Critical"
+      mitigation: "Early security reviews, continuous scanning"
+
+# ============================================================================
+# RESOURCE ALLOCATION
+# ============================================================================
+
+resourceAllocation:
+  totalAgents: 7
+
+  agentAssignments:
+    - agent: SetupAgent
+      phases: [phase-0]
+      estimatedDays: 2
+
+    - agent: MCPAgent
+      phases: [phase-1]
+      estimatedDays: 5
+
+    - agent: IntegrationAgent
+      phases: [phase-2]
+      estimatedDays: 7
+
+    - agent: GitHubAgent
+      phases: [phase-3]
+      estimatedDays: 5
+
+    - agent: SDKAgent
+      phases: [phase-4]
+      estimatedDays: 4
+
+    - agent: DocAgent
+      phases: [phase-5]
+      estimatedDays: 3
+
+    - agent: SecurityAgent
+      phases: [phase-6]
+      estimatedDays: 7
+
+  supportAgents:
+    - agent: ReviewAgent
+      role: "Code review and quality scoring"
+      invocation: "After each PR creation"
+
+    - agent: TestAgent
+      role: "Test creation and coverage"
+      invocation: "Continuous throughout all phases"
+
+# ============================================================================
+# SUCCESS METRICS
+# ============================================================================
+
+successMetrics:
+  technical:
+    - "All 7 phases completed successfully"
+    - "No circular dependencies detected"
+    - "All workflows operational"
+    - "Integration tests passing (≥80% coverage)"
+    - "Performance within expected ranges"
+
+  quality:
+    - "Guardian approvals at 3 critical milestones (M1, M2, M6)"
+    - "Code review approval for all PRs"
+    - "Documentation complete and accurate"
+    - "Security scans passing"
+    - "Quality score ≥80 for all phases"
+
+  timeline:
+    - "Parallel execution achieves 31% time savings (22 vs 32 days)"
+    - "Critical path completed within 29 days"
+    - "No phase exceeds estimated time by >20%"
+
+# ============================================================================
+# NEXT ACTIONS
+# ============================================================================
+
+nextActions:
+  immediate:
+    - action: "Create GitHub Milestone: M0 - Environment Setup"
+      priority: "P0-Immediate"
+      assignee: "@ShunsukeHayashi"
+      estimatedMinutes: 10
+
+    - action: "Start Phase 0: Environment Setup"
+      priority: "P0-Immediate"
+      assignee: "SetupAgent"
+      estimatedDays: 2
+
+    - action: "Create GitHub Issues for all 7 phases"
+      priority: "P1-High"
+      assignee: "@ShunsukeHayashi"
+      estimatedMinutes: 60
+
+  afterPhase0:
+    - action: "Guardian review of M0 completion"
+      priority: "P1-High"
+      estimatedMinutes: 15
+
+    - action: "Start Phase 1: MCP Server Implementation"
+      priority: "P0-Immediate"
+      assignee: "MCPAgent"
+      estimatedDays: 5
+
+# ============================================================================
+# APPENDIX: Timeline Visualization
+# ============================================================================
+
+timelineVisualization: |
+  Week 1:
+  Day 1-2:  [====] Phase 0: Environment Setup (M0)
+  Day 3-7:  [==========] Phase 1: MCP Server (M1 ✓)
+
+  Week 2:
+  Day 8-14: [==============] Phase 2: Agent Integration (M2 ✓)
+
+  Week 3:
+  Day 15-19: [==========] Phase 3: GitHub Integration (M3)
+            [========] Phase 4: TypeScript SDK (M4)
+  Day 20-22: [======] Phase 5: Documentation (M5)
+
+  Week 4-5:
+  Day 23-29: [==============] Phase 6: Security (M6 ✓)
+
+  Legend: [====] = Work days
+          M# ✓  = Guardian checkpoint
+
+# ============================================================================
+# VERSION HISTORY
+# ============================================================================
+
+versionHistory:
+  - version: "1.0.0"
+    date: "2025-10-10"
+    author: "Claude (Sonnet 4.5)"
+    changes:
+      - "Initial milestone definition"
+      - "7-phase DAG structure"
+      - "3 guardian checkpoints"
+      - "32-day timeline"

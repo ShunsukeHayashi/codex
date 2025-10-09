@@ -1,0 +1,442 @@
+name: 🔄 State Machine Automation
+
+# Automatically manage Issue/PR state based on labels
+# Adapted for Codex project (Rust-based, minimal Node.js dependencies)
+# Consolidated: Includes issue-opened.yml functionality
+
+on:
+  issues:
+    types: [opened, labeled, unlabeled, assigned, closed, reopened]
+  pull_request:
+    types: [opened, labeled, unlabeled, closed, reopened, ready_for_review]
+  issue_comment:
+    types: [created]
+
+concurrency:
+  group: state-machine-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: false
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  # ==========================================================================
+  # 1. Initial Triage - New Issues
+  # ==========================================================================
+
+  initial-triage:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'issues' && github.event.action == 'opened'
+    name: Initial Triage
+
+    steps:
+      - name: Comprehensive Auto-labeling
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = context.payload.issue.title.toLowerCase();
+            const body = (context.payload.issue.body || '').toLowerCase();
+            const text = `${title} ${body}`;
+            const labels = [];
+
+            // State label (always pending for new issues)
+            labels.push('📥 state:pending');
+
+            // Phase label (always planning for new issues)
+            labels.push('🎯 phase:planning');
+
+            // Type labels (from issue-opened.yml logic)
+            if (text.includes('bug') || text.includes('error') || text.includes('fix')) {
+              labels.push('🐛 type:bug');
+            } else if (text.includes('feature') || text.includes('add') || text.includes('implement')) {
+              labels.push('✨ type:feature');
+            } else if (text.includes('doc') || text.includes('readme')) {
+              labels.push('📚 type:docs');
+            } else if (text.includes('refactor') || text.includes('cleanup')) {
+              labels.push('♻️ type:refactor');
+            } else if (text.includes('test') || text.includes('coverage')) {
+              labels.push('🧪 type:test');
+            } else if (text.includes('chore') || text.includes('maintenance')) {
+              labels.push('🔧 type:chore');
+            }
+
+            // Priority auto-assignment (enhanced logic)
+            let priority = '📊 priority:P2-Medium'; // default
+
+            if (title.includes('critical') || body.includes('production down') || body.includes('security') || title.includes('p0') || text.includes('sev.1')) {
+              priority = '🔥 priority:P0-Critical';
+            } else if (title.includes('urgent') || title.includes('bug') || body.includes('broken') || title.includes('p1') || text.includes('important') || text.includes('high')) {
+              priority = '⚠️ priority:P1-High';
+            } else if (title.includes('p3') || title.includes('low priority')) {
+              priority = '📝 priority:P3-Low';
+            }
+
+            labels.push(priority);
+
+            // Apply all labels at once
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              issue_number: context.payload.issue.number,
+              labels: labels
+            });
+
+            // Add initial comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              issue_number: context.payload.issue.number,
+              body: `🤖 **Automated Triage**
+
+Issue received and labeled with initial state: \`📥 state:pending\` and priority: \`${priority}\`
+
+**Next Steps**:
+1. Add \`🤖 agent:coordinator\` label to trigger analysis
+2. Or manually assign agent labels to begin implementation
+
+---
+*Automated by [State Machine](../.github/workflows/state-machine.yml)*`
+            });
+
+  # ==========================================================================
+  # 2. Coordinator Assignment - Trigger Analysis
+  # ==========================================================================
+
+  coordinator-assignment:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'issues' &&
+      github.event.action == 'labeled' &&
+      contains(github.event.label.name, 'agent:coordinator')
+    name: Coordinator Assignment
+
+    steps:
+      - name: Transition to analyzing
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Remove pending, add analyzing
+            const labels = await github.rest.issues.listLabelsOnIssue({
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              issue_number: context.payload.issue.number
+            });
+
+            const stateLabels = labels.data.filter(l => l.name.includes('state:'));
+            for (const label of stateLabels) {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.name,
+                issue_number: context.payload.issue.number,
+                name: label.name
+              }).catch(() => {});
+            }
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              issue_number: context.payload.issue.number,
+              labels: ['🔍 state:analyzing']
+            });
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              issue_number: context.payload.issue.number,
+              body: `🔍 **State Transition: pending → analyzing**
+
+CoordinatorAgent assigned. Starting dependency analysis and task decomposition.
+
+---
+*Automated by [State Machine](../.github/workflows/state-machine.yml)*`
+            });
+
+  # ==========================================================================
+  # 3. Specialist Assignment - Start Implementation
+  # ==========================================================================
+
+  specialist-assignment:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'issues' &&
+      github.event.action == 'labeled' &&
+      (contains(github.event.label.name, 'agent:codegen') ||
+       contains(github.event.label.name, 'agent:issue') ||
+       contains(github.event.label.name, 'agent:pr'))
+    name: Specialist Assignment
+
+    steps:
+      - name: Transition to implementing
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Remove previous state labels
+            const labels = await github.rest.issues.listLabelsOnIssue({
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              issue_number: context.payload.issue.number
+            });
+
+            const stateLabels = labels.data.filter(l => l.name.includes('state:'));
+            for (const label of stateLabels) {
+              if (label.name !== '🏗️ state:implementing') {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.name,
+                  issue_number: context.payload.issue.number,
+                  name: label.name
+                }).catch(() => {});
+              }
+            }
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              issue_number: context.payload.issue.number,
+              labels: ['🏗️ state:implementing']
+            });
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              issue_number: context.payload.issue.number,
+              body: `🏗️ **State Transition: analyzing → implementing**
+
+Specialist agent assigned (\`${context.payload.label.name}\`). Implementation started.
+
+---
+*Automated by [State Machine](../.github/workflows/state-machine.yml)*`
+            });
+
+  # ==========================================================================
+  # 4. PR Created - Start Review
+  # ==========================================================================
+
+  pr-created:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.action == 'opened'
+    name: PR Created - Start Review
+
+    steps:
+      - name: Find and transition linked issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.pull_request.body || '';
+            const match = body.match(/#(\d+)/);
+
+            if (match) {
+              const issueNumber = match[1];
+
+              // Remove previous state labels from issue
+              const labels = await github.rest.issues.listLabelsOnIssue({
+                owner: context.repo.owner,
+                repo: context.repo.name,
+                issue_number: issueNumber
+              });
+
+              const stateLabels = labels.data.filter(l => l.name.includes('state:'));
+              for (const label of stateLabels) {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.name,
+                  issue_number: issueNumber,
+                  name: label.name
+                }).catch(() => {});
+              }
+
+              // Add reviewing state
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.name,
+                issue_number: issueNumber,
+                labels: ['👀 state:reviewing']
+              });
+
+              // Comment on issue
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.name,
+                issue_number: issueNumber,
+                body: `👀 **State Transition: implementing → reviewing**
+
+PR #${context.payload.pull_request.number} created. ReviewAgent starting quality checks.
+
+**Quality Criteria**:
+- ✅ Code quality score ≥ 80
+- ✅ Tests passing
+- ✅ Security scan passed
+
+---
+*Automated by [State Machine](../.github/workflows/state-machine.yml)*`
+              });
+            }
+
+            // Add labels to PR
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              issue_number: context.payload.pull_request.number,
+              labels: ['🤖 agent:review', '👀 state:reviewing']
+            });
+
+  # ==========================================================================
+  # 5. PR Merged - Mark as Done
+  # ==========================================================================
+
+  pr-merged:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.action == 'closed' &&
+      github.event.pull_request.merged == true
+    name: PR Merged - Mark Done
+
+    steps:
+      - name: Find and complete linked issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.pull_request.body || '';
+            const match = body.match(/#(\d+)/);
+
+            if (match) {
+              const issueNumber = match[1];
+
+              // Remove previous state labels
+              const labels = await github.rest.issues.listLabelsOnIssue({
+                owner: context.repo.owner,
+                repo: context.repo.name,
+                issue_number: issueNumber
+              });
+
+              const stateLabels = labels.data.filter(l => l.name.includes('state:'));
+              for (const label of stateLabels) {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.name,
+                  issue_number: issueNumber,
+                  name: label.name
+                }).catch(() => {});
+              }
+
+              // Add done state
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.name,
+                issue_number: issueNumber,
+                labels: ['✅ state:done']
+              });
+
+              // Comment on issue
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.name,
+                issue_number: issueNumber,
+                body: `✅ **State Transition: reviewing → done**
+
+PR #${context.payload.pull_request.number} merged successfully! Issue completed.
+
+🎉 **Well done!**
+
+---
+*Automated by [State Machine](../.github/workflows/state-machine.yml)*`
+              });
+
+              // Close issue
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.name,
+                issue_number: issueNumber,
+                state: 'closed'
+              });
+            }
+
+  # ==========================================================================
+  # 6. Blocked Label - Escalate
+  # ==========================================================================
+
+  blocked-escalation:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'issues' &&
+      github.event.action == 'labeled' &&
+      contains(github.event.label.name, 'state:blocked')
+    name: Blocked - Escalate
+
+    steps:
+      - name: Create escalation comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              issue_number: context.payload.issue.number,
+              body: `🚨 **BLOCKED - Guardian Escalation**
+
+This issue has been marked as blocked and requires Guardian intervention.
+
+@${{ github.repository_owner }} - Please review and resolve.
+
+**Next Steps**:
+1. Review blocker reason
+2. Resolve dependencies or technical issues
+3. Remove \`🔴 state:blocked\` label when ready
+4. Add appropriate state label to resume
+
+---
+*Automated by [State Machine](../.github/workflows/state-machine.yml)*`
+            });
+
+            // Add severity label
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              issue_number: context.payload.issue.number,
+              labels: ['⚠️ severity:Sev.2-High']
+            });
+
+  # ==========================================================================
+  # 7. Failed Label - Log and Alert
+  # ==========================================================================
+
+  failed-alert:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'issues' &&
+      github.event.action == 'labeled' &&
+      contains(github.event.label.name, 'state:failed')
+    name: Failed - Alert
+
+    steps:
+      - name: Create failure comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              issue_number: context.payload.issue.number,
+              body: `🛑 **FAILED - Execution Error**
+
+Automation encountered an unrecoverable error.
+
+**Recovery Steps**:
+1. Review error logs in GitHub Actions
+2. Fix underlying issue
+3. Remove \`🛑 state:failed\` label
+4. Add \`🔍 state:analyzing\` to restart
+
+---
+*Automated by [State Machine](../.github/workflows/state-machine.yml)*`
+            });
+
+            // Add critical severity
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              issue_number: context.payload.issue.number,
+              labels: ['🚨 severity:Sev.1-Critical']
+            });
