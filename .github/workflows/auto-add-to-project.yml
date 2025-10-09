@@ -5,6 +5,10 @@ on:
   issues:
     types: [opened]
 
+concurrency:
+  group: project-add-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
 jobs:
   add-to-project:
     runs-on: ubuntu-latest
