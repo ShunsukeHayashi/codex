@@ -9,6 +9,7 @@
     "dev": "tsc --watch",
     "test": "vitest",
     "test:e2e": "node dist/e2e/run-e2e-tests.js",
+    "test:e2e:real": "node dist/e2e/run-e2e-real.js",
     "lint": "eslint src --ext .ts"
   },
   "dependencies": {

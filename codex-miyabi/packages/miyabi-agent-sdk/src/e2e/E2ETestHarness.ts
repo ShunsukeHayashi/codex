@@ -2,6 +2,8 @@
  * E2E Test Harness
  *
  * Miyabi自律型開発環境のエンドツーエンドテストフレームワーク
+ *
+ * Phase 8-3: Real API Integration Support
  */
 
 import type { IssueData } from "../types.js";
@@ -11,6 +13,8 @@ import { CodeGenAgent } from "../agents/CodeGenAgent.js";
 import { ReviewAgent } from "../agents/ReviewAgent.js";
 import { PRAgent } from "../agents/PRAgent.js";
 import { TestAgent } from "../agents/TestAgent.js";
+import { AnthropicClient } from "../clients/AnthropicClient.js";
+import { GitHubClient } from "../clients/GitHubClient.js";
 
 export interface E2EScenario {
   id: number;
@@ -52,10 +56,20 @@ export interface E2ETestResult {
   };
 }
 
+export interface E2ETestConfig {
+  useRealAPI?: boolean;
+  anthropicApiKey?: string;
+  githubToken?: string;
+  testRepo?: string;
+  testOwner?: string;
+}
+
 /**
  * E2E Test Harness
  *
  * Agent間の統合フローをテストする
+ *
+ * Phase 8-3: Supports both mock and real API modes
  */
 export class E2ETestHarness {
   private coordinatorAgent: CoordinatorAgent;
@@ -64,14 +78,52 @@ export class E2ETestHarness {
   private reviewAgent: ReviewAgent;
   private prAgent: PRAgent;
   private testAgent: TestAgent;
+  private config: E2ETestConfig;
 
-  constructor() {
-    this.coordinatorAgent = new CoordinatorAgent();
-    this.issueAgent = new IssueAgent();
-    this.codeGenAgent = new CodeGenAgent();
-    this.reviewAgent = new ReviewAgent();
-    this.prAgent = new PRAgent();
-    this.testAgent = new TestAgent();
+  constructor(config: E2ETestConfig = {}) {
+    this.config = config;
+
+    if (config.useRealAPI && (config.anthropicApiKey || config.githubToken)) {
+      // Real API mode: Initialize agents with API clients
+      const anthropicClient = config.anthropicApiKey
+        ? new AnthropicClient(config.anthropicApiKey)
+        : undefined;
+
+      const githubClient = config.githubToken
+        ? new GitHubClient(config.githubToken)
+        : undefined;
+
+      this.coordinatorAgent = new CoordinatorAgent();
+      this.issueAgent = new IssueAgent({
+        anthropicApiKey: config.anthropicApiKey,
+        githubToken: config.githubToken,
+      });
+      this.codeGenAgent = new CodeGenAgent({
+        anthropicApiKey: config.anthropicApiKey,
+        githubToken: config.githubToken,
+      });
+      this.reviewAgent = new ReviewAgent({
+        anthropicApiKey: config.anthropicApiKey,
+      });
+      this.prAgent = new PRAgent({
+        githubToken: config.githubToken,
+      });
+      this.testAgent = new TestAgent();
+
+      console.log(
+        `[E2E] Initialized with REAL API mode (Repo: ${config.testOwner}/${config.testRepo})`
+      );
+    } else {
+      // Mock mode (default)
+      this.coordinatorAgent = new CoordinatorAgent();
+      this.issueAgent = new IssueAgent();
+      this.codeGenAgent = new CodeGenAgent();
+      this.reviewAgent = new ReviewAgent();
+      this.prAgent = new PRAgent();
+      this.testAgent = new TestAgent();
+
+      console.log("[E2E] Initialized with MOCK mode");
+    }
   }
 
   /**
@@ -96,8 +148,9 @@ export class E2ETestHarness {
       console.log("[E2E] Step 1: IssueAgent analyzing issue...");
       const issueResult = await this.issueAgent.analyze({
         issueNumber: scenario.id,
-        repository: "miyabi-test",
-        owner: "test-user",
+        repository: this.config.testRepo || "miyabi-test",
+        owner: this.config.testOwner || "test-user",
+        useRealAPI: this.config.useRealAPI,
       });
 
       if (!issueResult.success || !issueResult.data) {
@@ -116,8 +169,8 @@ export class E2ETestHarness {
       console.log("[E2E] Step 2: CoordinatorAgent creating DAG...");
       const coordResult = await this.coordinatorAgent.execute({
         issueNumber: scenario.id,
-        repository: "miyabi-test",
-        owner: "test-user",
+        repository: this.config.testRepo || "miyabi-test",
+        owner: this.config.testOwner || "test-user",
       });
 
       if (!coordResult.success || !coordResult.data) {
@@ -132,17 +185,18 @@ export class E2ETestHarness {
         `[E2E] DAG created: ${tasksCreated} tasks, ${parallelExecutions} parallel groups`
       );
 
-      // 3. CodeGenAgent: コード生成（シミュレーション）
+      // 3. CodeGenAgent: コード生成
       console.log("[E2E] Step 3: CodeGenAgent generating code...");
       const codeGenResult = await this.codeGenAgent.generate({
         taskId: "e2e-test",
         requirements: scenario.issueBody,
         context: {
-          repository: "miyabi-test",
-          owner: "test-user",
+          repository: this.config.testRepo || "miyabi-test",
+          owner: this.config.testOwner || "test-user",
           baseBranch: "main",
           relatedFiles: [],
         },
+        useRealAPI: this.config.useRealAPI,
       });
 
       if (!codeGenResult.success || !codeGenResult.data) {
@@ -163,6 +217,7 @@ export class E2ETestHarness {
           requireTests: true,
           securityScan: scenario.successCriteria.requiresSecurityScan || false,
         },
+        useRealAPI: this.config.useRealAPI,
       });
 
       if (!reviewResult.success || !reviewResult.data) {
@@ -197,8 +252,8 @@ export class E2ETestHarness {
       if (codeGenResult.data.tests.length > 0) {
         console.log("[E2E] Step 5: TestAgent running tests...");
         const testResult = await this.testAgent.run({
-          repository: "miyabi-test",
-          owner: "test-user",
+          repository: this.config.testRepo || "miyabi-test",
+          owner: this.config.testOwner || "test-user",
           branch: "e2e-test",
         });
 
@@ -215,10 +270,11 @@ export class E2ETestHarness {
       console.log("[E2E] Step 6: PRAgent creating PR...");
       const prResult = await this.prAgent.create({
         issueNumber: scenario.id,
-        repository: "miyabi-test",
-        owner: "test-user",
+        repository: this.config.testRepo || "miyabi-test",
+        owner: this.config.testOwner || "test-user",
         files: codeGenResult.data.files,
         qualityReport: reviewResult.data,
+        useRealAPI: this.config.useRealAPI,
       });
 
       if (!prResult.success || !prResult.data) {
