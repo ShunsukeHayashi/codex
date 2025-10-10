@@ -27,7 +27,7 @@ jobs:
 
   initial-triage:
     runs-on: ubuntu-latest
-    if: github.event_name == 'issues' && github.event.action == 'opened'
+    if: github.event_name == 'issues' && (github.event.action == 'opened' || github.event.action == 'reopened')
     name: Initial Triage
 
     steps:
@@ -38,58 +38,81 @@ jobs:
             const title = context.payload.issue.title.toLowerCase();
             const body = (context.payload.issue.body || '').toLowerCase();
             const text = `${title} ${body}`;
+
+            // Get existing labels (for reopened issues)
+            const existingLabels = await github.rest.issues.listLabelsOnIssue({
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              issue_number: context.payload.issue.number
+            });
+            const existingLabelNames = existingLabels.data.map(l => l.name);
+
+            // Helper to check if label category exists
+            const hasLabelCategory = (category) => existingLabelNames.some(l => l.includes(category));
+
             const labels = [];
 
-            // State label (always pending for new issues)
-            labels.push('📥 state:pending');
-
-            // Phase label (always planning for new issues)
-            labels.push('🎯 phase:planning');
-
-            // Type labels (from issue-opened.yml logic)
-            if (text.includes('bug') || text.includes('error') || text.includes('fix')) {
-              labels.push('🐛 type:bug');
-            } else if (text.includes('feature') || text.includes('add') || text.includes('implement')) {
-              labels.push('✨ type:feature');
-            } else if (text.includes('doc') || text.includes('readme')) {
-              labels.push('📚 type:docs');
-            } else if (text.includes('refactor') || text.includes('cleanup')) {
-              labels.push('♻️ type:refactor');
-            } else if (text.includes('test') || text.includes('coverage')) {
-              labels.push('🧪 type:test');
-            } else if (text.includes('chore') || text.includes('maintenance')) {
-              labels.push('🔧 type:chore');
+            // State label (only if no state label exists)
+            if (!hasLabelCategory('state:')) {
+              labels.push('📥 state:pending');
             }
 
-            // Priority auto-assignment (enhanced logic)
-            let priority = '📊 priority:P2-Medium'; // default
-
-            if (title.includes('critical') || body.includes('production down') || body.includes('security') || title.includes('p0') || text.includes('sev.1')) {
-              priority = '🔥 priority:P0-Critical';
-            } else if (title.includes('urgent') || title.includes('bug') || body.includes('broken') || title.includes('p1') || text.includes('important') || text.includes('high')) {
-              priority = '⚠️ priority:P1-High';
-            } else if (title.includes('p3') || title.includes('low priority')) {
-              priority = '📝 priority:P3-Low';
+            // Phase label (only if no phase label exists)
+            if (!hasLabelCategory('phase:')) {
+              labels.push('🎯 phase:planning');
             }
 
-            labels.push(priority);
+            // Type labels (only if no type label exists)
+            if (!hasLabelCategory('type:')) {
+              if (text.includes('bug') || text.includes('error') || text.includes('fix')) {
+                labels.push('🐛 type:bug');
+              } else if (text.includes('feature') || text.includes('add') || text.includes('implement')) {
+                labels.push('✨ type:feature');
+              } else if (text.includes('doc') || text.includes('readme')) {
+                labels.push('📚 type:docs');
+              } else if (text.includes('refactor') || text.includes('cleanup')) {
+                labels.push('♻️ type:refactor');
+              } else if (text.includes('test') || text.includes('coverage')) {
+                labels.push('🧪 type:test');
+              } else if (text.includes('chore') || text.includes('maintenance')) {
+                labels.push('🔧 type:chore');
+              }
+            }
 
-            // Apply all labels at once
-            await github.rest.issues.addLabels({
-              owner: context.repo.owner,
-              repo: context.repo.name,
-              issue_number: context.payload.issue.number,
-              labels: labels
-            });
+            // Priority auto-assignment (only if no priority label exists)
+            if (!hasLabelCategory('priority:')) {
+              let priority = '📊 priority:P2-Medium'; // default
 
-            // Add initial comment
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.name,
-              issue_number: context.payload.issue.number,
-              body: `🤖 **Automated Triage**
+              if (title.includes('critical') || body.includes('production down') || body.includes('security') || title.includes('p0') || text.includes('sev.1')) {
+                priority = '🔥 priority:P0-Critical';
+              } else if (title.includes('urgent') || title.includes('bug') || body.includes('broken') || title.includes('p1') || text.includes('important') || text.includes('high')) {
+                priority = '⚠️ priority:P1-High';
+              } else if (title.includes('p3') || title.includes('low priority')) {
+                priority = '📝 priority:P3-Low';
+              }
 
-Issue received and labeled with initial state: \`📥 state:pending\` and priority: \`${priority}\`
+              labels.push(priority);
+            }
+
+            // Apply all labels at once (only if there are labels to add)
+            if (labels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.name,
+                issue_number: context.payload.issue.number,
+                labels: labels
+              });
+
+              // Add initial comment (only for new issues)
+              if (context.payload.action === 'opened') {
+                const priorityLabel = labels.find(l => l.includes('priority:')) || '📊 priority:P2-Medium';
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.name,
+                  issue_number: context.payload.issue.number,
+                  body: `🤖 **Automated Triage**
+
+Issue received and labeled with initial state: \`📥 state:pending\` and priority: \`${priorityLabel}\`
 
 **Next Steps**:
 1. Add \`🤖 agent:coordinator\` label to trigger analysis
@@ -97,7 +120,27 @@ Issue received and labeled with initial state: \`📥 state:pending\` and priori
 
 ---
 *Automated by [State Machine](../.github/workflows/state-machine.yml)*`
-            });
+                });
+              } else if (context.payload.action === 'reopened') {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.name,
+                  issue_number: context.payload.issue.number,
+                  body: `🔄 **Issue Reopened - Re-triage**
+
+Issue reopened and missing labels have been added.
+
+**Current State**: Labels automatically assigned based on title and description.
+
+**Next Steps**:
+1. Add \`🤖 agent:coordinator\` label to trigger analysis
+2. Or manually assign agent labels to begin implementation
+
+---
+*Automated by [State Machine](../.github/workflows/state-machine.yml)*`
+                });
+              }
+            }
 
   # ==========================================================================
   # 2. Coordinator Assignment - Trigger Analysis
