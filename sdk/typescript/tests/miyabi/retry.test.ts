@@ -5,6 +5,15 @@
 
 import { withRetry, createRetryWrapper } from "../../src/miyabi/retry.js";
 
+// Mock console.warn to avoid polluting test output
+const originalWarn = console.warn;
+beforeAll(() => {
+  console.warn = jest.fn();
+});
+afterAll(() => {
+  console.warn = originalWarn;
+});
+
 describe("Retry Logic", () => {
   describe("withRetry", () => {
     it("should return result on first success", async () => {
