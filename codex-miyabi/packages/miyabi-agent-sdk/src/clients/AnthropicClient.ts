@@ -125,7 +125,7 @@ export class AnthropicClient {
 
     const response = await this.client.messages.create({
       model: this.model,
-      max_tokens: 16384, // Increased from 8192 to handle larger code generation
+      max_tokens: 32768, // Increased to 32K (max: 64K) for complex code generation
       messages: [
         {
           role: "user",
