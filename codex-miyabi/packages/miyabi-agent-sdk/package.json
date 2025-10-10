@@ -4,10 +4,15 @@
   "description": "Miyabi Autonomous Agent SDK - 7 Agents based on Shikigaku Theory",
   "main": "dist/index.js",
   "type": "module",
+  "bin": {
+    "miyabi": "./dist/cli/miyabi.js"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
     "test": "vitest",
+    "test:e2e": "node dist/e2e/run-e2e-tests.js",
+    "test:e2e:real": "node dist/e2e/run-e2e-real.js",
     "lint": "eslint src --ext .ts"
   },
   "dependencies": {

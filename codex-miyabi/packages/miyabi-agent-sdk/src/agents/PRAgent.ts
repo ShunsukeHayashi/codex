@@ -5,6 +5,8 @@
  * - 責任: Draft Pull Requestを作成
  * - 権限: ブランチ作成、PR作成（Draft）、ラベル付与
  * - 階層: Specialist Layer
+ *
+ * Phase 8-2: Real API Integration
  */
 
 import type {
@@ -14,6 +16,7 @@ import type {
   AgentInput,
   AgentOutput,
 } from "../types.js";
+import { GitHubClient } from "../clients/GitHubClient.js";
 
 export interface PRInput extends AgentInput {
   issueNumber: number;
@@ -22,6 +25,8 @@ export interface PRInput extends AgentInput {
   files: GeneratedFile[];
   qualityReport: QualityReport;
   baseBranch?: string;
+  useRealAPI?: boolean;
+  githubClient?: GitHubClient;
 }
 
 export interface PROutput extends AgentOutput {
@@ -34,18 +39,29 @@ export interface PROutput extends AgentOutput {
  * Branch作成 → Files commit → Draft PR作成 → PR本文生成
  */
 export class PRAgent {
+  private githubClient?: GitHubClient;
+
+  constructor(config?: {
+    githubToken?: string;
+  }) {
+    if (config?.githubToken) {
+      this.githubClient = new GitHubClient(config.githubToken);
+    }
+  }
+
   /**
    * メイン実行ロジック
    */
   async create(input: PRInput): Promise<PROutput> {
     try {
+      const githubClient = input.githubClient || this.githubClient;
       const baseBranch = input.baseBranch || "main";
 
       // 1. Feature branch名生成
       const branchName = this.generateBranchName(input.issueNumber);
 
-      // 2. Branch作成（GitHub API - Phase 6で統合予定）
-      await this.createBranch(input.owner, input.repository, branchName, baseBranch);
+      // 2. Branch作成（GitHub API）
+      await this.createBranch(input.owner, input.repository, branchName, baseBranch, githubClient);
 
       // 3. Files commit
       await this.commitFiles(
@@ -53,7 +69,8 @@ export class PRAgent {
         input.repository,
         branchName,
         input.files,
-        this.generateCommitMessage(input)
+        this.generateCommitMessage(input),
+        githubClient
       );
 
       // 4. Draft PR作成
@@ -65,6 +82,7 @@ export class PRAgent {
         title: this.generatePRTitle(input),
         body: this.generatePRBody(input),
         draft: true,
+        githubClient,
       });
 
       return {
@@ -91,39 +109,61 @@ export class PRAgent {
   /**
    * Branch作成
    *
-   * TODO: GitHubClient統合（MCP Server実装後）
+   * Phase 8-2: Real GitHub API integration
    */
   private async createBranch(
     owner: string,
     repository: string,
     branchName: string,
-    baseBranch: string
+    baseBranch: string,
+    githubClient?: GitHubClient
   ): Promise<void> {
-    // Mock implementation
-    // 実装時には: octokit.git.createRef() を使用
-    console.log(
-      `[PRAgent] Would create branch: ${branchName} from ${baseBranch}`
-    );
+    if (githubClient) {
+      // Real API implementation
+      await githubClient.createBranch(owner, repository, branchName, baseBranch);
+      console.log(
+        `[PRAgent] Created branch: ${branchName} from ${baseBranch}`
+      );
+    } else {
+      // Mock implementation (fallback)
+      console.log(
+        `[PRAgent] Would create branch: ${branchName} from ${baseBranch}`
+      );
+    }
   }
 
   /**
    * Files commit
    *
-   * TODO: GitHubClient統合（MCP Server実装後）
+   * Phase 8-2: Real GitHub API integration
    */
   private async commitFiles(
     owner: string,
     repository: string,
     branch: string,
     files: GeneratedFile[],
-    message: string
+    message: string,
+    githubClient?: GitHubClient
   ): Promise<void> {
-    // Mock implementation
-    // 実装時には: GitHub Tree APIを使用
-    console.log(
-      `[PRAgent] Would commit ${files.length} files to ${branch}:`,
-      message
-    );
+    if (githubClient) {
+      // Real API implementation
+      await githubClient.commitFiles({
+        owner,
+        repo: repository,
+        branch,
+        files: files.map(f => ({ path: f.path, content: f.content })),
+        message,
+      });
+      console.log(
+        `[PRAgent] Committed ${files.length} files to ${branch}`
+      );
+    } else {
+      // Mock implementation (fallback)
+      console.log(
+        `[PRAgent] Would commit ${files.length} files to ${branch}:`,
+        message
+      );
+    }
   }
 
   /**
@@ -254,7 +294,7 @@ Closes #${input.issueNumber}
   /**
    * Pull Request作成
    *
-   * TODO: GitHubClient統合（MCP Server実装後）
+   * Phase 8-2: Real GitHub API integration
    */
   private async createPullRequest(params: {
     owner: string;
@@ -264,25 +304,46 @@ Closes #${input.issueNumber}
     title: string;
     body: string;
     draft: boolean;
+    githubClient?: GitHubClient;
   }): Promise<PullRequest> {
-    // Mock implementation
-    // 実装時には: octokit.pulls.create() を使用
+    if (params.githubClient) {
+      // Real API implementation
+      const prInfo = await params.githubClient.createPullRequest({
+        owner: params.owner,
+        repo: params.repository,
+        title: params.title,
+        body: params.body,
+        head: params.head,
+        base: params.base,
+        draft: params.draft,
+      });
 
-    const mockPrNumber = Math.floor(Math.random() * 1000) + 1;
-    const mockPrUrl = `https://github.com/${params.owner}/${params.repository}/pull/${mockPrNumber}`;
+      console.log(`[PRAgent] Created PR #${prInfo.number}: ${prInfo.html_url}`);
 
-    console.log(`[PRAgent] Would create PR:`, {
-      title: params.title,
-      base: params.base,
-      head: params.head,
-      draft: params.draft,
-    });
+      return {
+        number: prInfo.number,
+        url: prInfo.html_url,
+        branch: params.head,
+        status: params.draft ? "draft" : "open",
+      };
+    } else {
+      // Mock implementation (fallback)
+      const mockPrNumber = Math.floor(Math.random() * 1000) + 1;
+      const mockPrUrl = `https://github.com/${params.owner}/${params.repository}/pull/${mockPrNumber}`;
 
-    return {
-      number: mockPrNumber,
-      url: mockPrUrl,
-      branch: params.head,
-      status: "draft",
-    };
+      console.log(`[PRAgent] Would create PR:`, {
+        title: params.title,
+        base: params.base,
+        head: params.head,
+        draft: params.draft,
+      });
+
+      return {
+        number: mockPrNumber,
+        url: mockPrUrl,
+        branch: params.head,
+        status: "draft",
+      };
+    }
   }
 }

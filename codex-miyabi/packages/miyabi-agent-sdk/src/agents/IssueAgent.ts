@@ -5,18 +5,30 @@
  * - 責任: GitHubのIssueを解析し、適切なラベルと複雑度を判定
  * - 権限: ラベル自動付与、複雑度推定、優先度判定
  * - 階層: Specialist Layer
+ *
+ * Phase 8-1: Real API Integration
  */
 
 import type { IssueData, AgentInput, AgentOutput } from "../types.js";
+import { AnthropicClient } from "../clients/AnthropicClient.js";
+import { ClaudeCodeClient } from "../clients/ClaudeCodeClient.js";
+import { GitHubClient } from "../clients/GitHubClient.js";
 
 export interface IssueInput extends AgentInput {
   issueNumber: number;
   repository: string;
   owner: string;
+  useRealAPI?: boolean; // Toggle for real API vs mock
+  anthropicClient?: AnthropicClient;
+  claudeCodeClient?: ClaudeCodeClient; // Phase 9: Claude Code integration
+  githubClient?: GitHubClient;
 }
 
 export interface IssueOutput extends AgentOutput {
-  data?: IssueData;
+  data?: IssueData & {
+    tokensUsed?: { input: number; output: number };
+    cost?: number;
+  };
 }
 
 /**
@@ -25,19 +37,53 @@ export interface IssueOutput extends AgentOutput {
  * GitHub Issue取得 → Claude分析 → ラベル付与 → 複雑度判定
  */
 export class IssueAgent {
+  private anthropicClient?: AnthropicClient;
+  private claudeCodeClient?: ClaudeCodeClient;
+  private githubClient?: GitHubClient;
+
+  constructor(config?: {
+    anthropicApiKey?: string;
+    githubToken?: string;
+    useClaudeCode?: boolean; // Phase 9: Use Claude Code instead of Anthropic API
+  }) {
+    if (config) {
+      if (config.useClaudeCode) {
+        this.claudeCodeClient = new ClaudeCodeClient();
+      } else if (config.anthropicApiKey) {
+        this.anthropicClient = new AnthropicClient(config.anthropicApiKey);
+      }
+      if (config.githubToken) {
+        this.githubClient = new GitHubClient(config.githubToken);
+      }
+    }
+  }
+
   /**
    * メイン実行ロジック
    */
   async analyze(input: IssueInput): Promise<IssueOutput> {
     try {
-      // 1. Issue取得（GitHub API - Phase 6で統合予定）
-      const issue = await this.fetchIssue(input);
+      // Select client to use (real API or mock)
+      const githubClient = input.githubClient || this.githubClient;
+      const anthropicClient = input.anthropicClient || this.anthropicClient;
+      const claudeCodeClient = input.claudeCodeClient || this.claudeCodeClient;
+      const useRealAPI = input.useRealAPI !== false && !!(githubClient || anthropicClient || claudeCodeClient);
 
-      // 2. Claude分析（Anthropic API - Phase 6で統合予定）
-      const analysis = await this.analyzeWithClaude(issue);
+      // 1. Issue取得（GitHub API - Phase 8で実API統合）
+      const issue = await this.fetchIssue(input, githubClient);
 
-      // 3. ラベル付与（GitHub API - Phase 6で統合予定）
-      await this.applyLabels(input, analysis.labels);
+      // 2. Claude分析（Anthropic API or Claude Code - Phase 9統合）
+      const analysis = await this.analyzeWithClaude(
+        { ...issue, number: issue.number },
+        anthropicClient,
+        claudeCodeClient,
+        useRealAPI
+      );
+
+      // 3. ラベル付与（GitHub API - Phase 8で実API統合）
+      if (useRealAPI) {
+        await this.applyLabels(input, analysis.labels, githubClient);
+      }
 
       return {
         success: true,
@@ -49,6 +95,8 @@ export class IssueAgent {
           complexity: analysis.complexity,
           priority: analysis.priority,
           type: analysis.type,
+          tokensUsed: analysis.tokensUsed,
+          cost: analysis.cost,
         },
       };
     } catch (error) {
@@ -63,44 +111,101 @@ export class IssueAgent {
   /**
    * GitHub IssueをAPI経由で取得
    *
-   * TODO: GitHubClient統合（MCP Server実装後）
+   * Phase 8: Real GitHub API integration
    */
-  private async fetchIssue(input: IssueInput): Promise<{
+  private async fetchIssue(
+    input: IssueInput,
+    githubClient?: GitHubClient
+  ): Promise<{
     number: number;
     title: string;
     body: string | null;
   }> {
-    // Mock implementation
-    // 実装時には: @octokit/rest を使用
-    return {
-      number: input.issueNumber,
-      title: `Mock Issue #${input.issueNumber}`,
-      body: "Mock issue body for testing",
-    };
+    if (githubClient) {
+      // Real API implementation
+      const issue = await githubClient.getIssue(
+        input.owner,
+        input.repository,
+        input.issueNumber
+      );
+      return {
+        number: issue.number,
+        title: issue.title,
+        body: issue.body,
+      };
+    } else {
+      // Mock implementation (fallback)
+      return {
+        number: input.issueNumber,
+        title: `Mock Issue #${input.issueNumber}`,
+        body: "Mock issue body for testing",
+      };
+    }
   }
 
   /**
    * Claude Sonnet 4で自然言語解析
    *
-   * TODO: AnthropicClient統合（MCP Server実装後）
+   * Phase 8: Real Claude API integration
+   * Phase 9: Claude Code CLI integration
    */
-  private async analyzeWithClaude(issue: {
-    title: string;
-    body: string | null;
-  }): Promise<{
+  private async analyzeWithClaude(
+    issue: {
+      title: string;
+      body: string | null;
+      number?: number;
+    },
+    anthropicClient?: AnthropicClient,
+    claudeCodeClient?: ClaudeCodeClient,
+    useRealAPI?: boolean
+  ): Promise<{
     labels: string[];
     complexity: "small" | "medium" | "large" | "xlarge";
     priority: "P0" | "P1" | "P2" | "P3";
     type: "bug" | "feature" | "refactor" | "docs" | "test" | "chore";
+    tokensUsed?: { input: number; output: number };
+    cost?: number;
   }> {
-    // Mock implementation
-    // 実装時には: @anthropic-ai/sdk を使用
-    const prompt = this.buildAnalysisPrompt(issue);
+    if (useRealAPI && claudeCodeClient) {
+      // Phase 9: Claude Code implementation
+      const result = await claudeCodeClient.analyzeIssue({
+        title: issue.title,
+        body: issue.body || "",
+        number: issue.number || 0,
+      });
 
-    // キーワードベースの簡易分析（Claude統合前のフォールバック）
-    const analysis = this.keywordBasedAnalysis(issue);
+      return {
+        labels: result.labels,
+        complexity: result.complexity as any,
+        priority: result.priority as any,
+        type: result.type as any,
+        tokensUsed: { input: 0, output: 0 }, // Claude Code doesn't track tokens
+        cost: 0, // Free!
+      };
+    } else if (useRealAPI && anthropicClient) {
+      // Phase 8: Real Anthropic API implementation
+      const result = await anthropicClient.analyzeIssue(issue.title, issue.body);
 
-    return analysis;
+      // Calculate cost
+      const cost = anthropicClient.calculateCost(result.tokensUsed);
+
+      return {
+        labels: result.labels,
+        complexity: result.complexity,
+        priority: result.priority,
+        type: result.type,
+        tokensUsed: result.tokensUsed,
+        cost,
+      };
+    } else {
+      // Mock implementation (fallback)
+      const analysis = this.keywordBasedAnalysis(issue);
+      return {
+        ...analysis,
+        tokensUsed: undefined,
+        cost: undefined,
+      };
+    }
   }
 
   /**
@@ -257,18 +362,32 @@ export class IssueAgent {
   /**
    * ラベル付与（GitHub API）
    *
-   * TODO: GitHubClient統合（MCP Server実装後）
+   * Phase 8: Real GitHub API integration
    */
   private async applyLabels(
     input: IssueInput,
-    labels: string[]
+    labels: string[],
+    githubClient?: GitHubClient
   ): Promise<void> {
-    // Mock implementation
-    // 実装時には: octokit.issues.addLabels() を使用
-    console.log(
-      `[IssueAgent] Would apply labels to #${input.issueNumber}:`,
-      labels
-    );
+    if (githubClient) {
+      // Real API implementation
+      await githubClient.addLabels(
+        input.owner,
+        input.repository,
+        input.issueNumber,
+        labels
+      );
+      console.log(
+        `[IssueAgent] Applied labels to #${input.issueNumber}:`,
+        labels
+      );
+    } else {
+      // Mock implementation (fallback)
+      console.log(
+        `[IssueAgent] Would apply labels to #${input.issueNumber}:`,
+        labels
+      );
+    }
   }
 
   /**

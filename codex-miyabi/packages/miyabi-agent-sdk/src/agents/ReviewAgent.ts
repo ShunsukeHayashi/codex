@@ -5,6 +5,8 @@
  * - 責任: 生成されたコードを品質チェック
  * - 権限: 品質合否判定（80点以上で合格）、改善提案、セキュリティスキャン
  * - 階層: Specialist Layer
+ *
+ * Phase 8-2: Real API Integration
  */
 
 import type {
@@ -13,6 +15,8 @@ import type {
   AgentInput,
   AgentOutput,
 } from "../types.js";
+import { AnthropicClient } from "../clients/AnthropicClient.js";
+import { ClaudeCodeClient } from "../clients/ClaudeCodeClient.js";
 
 export interface ReviewInput extends AgentInput {
   files: GeneratedFile[];
@@ -21,10 +25,16 @@ export interface ReviewInput extends AgentInput {
     requireTests: boolean;
     securityScan: boolean;
   };
+  useRealAPI?: boolean;
+  anthropicClient?: AnthropicClient;
+  claudeCodeClient?: ClaudeCodeClient; // Phase 9
 }
 
 export interface ReviewOutput extends AgentOutput {
-  data?: QualityReport;
+  data?: QualityReport & {
+    tokensUsed?: { input: number; output: number };
+    cost?: number;
+  };
 }
 
 interface StaticAnalysisResult {
@@ -48,51 +58,130 @@ interface CoverageResult {
  * 静的解析 → セキュリティスキャン → カバレッジ確認 → スコアリング → 改善提案
  */
 export class ReviewAgent {
+  private anthropicClient?: AnthropicClient;
+  private claudeCodeClient?: ClaudeCodeClient;
+
+  constructor(config?: {
+    anthropicApiKey?: string;
+    useClaudeCode?: boolean; // Phase 9
+  }) {
+    if (config) {
+      if (config.useClaudeCode) {
+        this.claudeCodeClient = new ClaudeCodeClient();
+      } else if (config.anthropicApiKey) {
+        this.anthropicClient = new AnthropicClient(config.anthropicApiKey);
+      }
+    }
+  }
+
   /**
    * メイン実行ロジック
    */
   async review(input: ReviewInput): Promise<ReviewOutput> {
     try {
-      // 並列実行で効率化
-      const [staticAnalysis, securityScan, coverage] = await Promise.all([
-        this.runStaticAnalysis(input.files),
-        input.standards.securityScan
-          ? this.runSecurityScan(input.files)
-          : Promise.resolve({ passed: true, issues: [] }),
-        input.standards.requireTests
-          ? this.checkCoverage(input.files)
-          : Promise.resolve({ percentage: 0 }),
-      ]);
+      const anthropicClient = input.anthropicClient || this.anthropicClient;
+      const claudeCodeClient = input.claudeCodeClient || this.claudeCodeClient;
+      const useRealAPI = input.useRealAPI !== false && !!(anthropicClient || claudeCodeClient);
 
-      // 品質スコア計算
-      const qualityScore = this.calculateQualityScore({
-        staticAnalysis,
-        securityScan,
-        coverage,
-      });
+      let tokensUsed: { input: number; output: number } | undefined;
+      let cost: number | undefined;
 
-      // 合否判定
-      const passed = qualityScore >= input.standards.minQualityScore;
+      if (useRealAPI && claudeCodeClient) {
+        // Phase 9: Claude Code review
+        const result = await claudeCodeClient.reviewCode(
+          input.files.map(f => ({ path: f.path, content: f.content }))
+        );
 
-      // 改善提案生成
-      const suggestions = this.generateSuggestions({
-        staticAnalysis,
-        securityScan,
-        coverage,
-        qualityScore,
-        minQualityScore: input.standards.minQualityScore,
-      });
+        // Calculate coverage separately (Claude Code doesn't provide it)
+        const coverage = input.standards.requireTests
+          ? await this.checkCoverage(input.files)
+          : { percentage: 0 };
 
-      return {
-        success: true,
-        data: {
+        return {
+          success: true,
+          data: {
+            qualityScore: result.qualityScore,
+            passed: result.passed,
+            issues: result.issues.map(issue => ({
+              severity: issue.severity as "error" | "warning" | "info",
+              file: issue.file || "",
+              line: issue.line,
+              message: issue.message,
+            })),
+            coverage: coverage.percentage,
+            suggestions: result.suggestions,
+            tokensUsed: { input: 0, output: 0 },
+            cost: 0, // Free!
+          },
+        };
+      } else if (useRealAPI && anthropicClient) {
+        // Real Claude API review
+        const result = await anthropicClient.reviewCode(
+          input.files.map(f => ({ path: f.path, content: f.content })),
+          input.standards
+        );
+
+        tokensUsed = result.tokensUsed;
+        cost = anthropicClient.calculateCost(result.tokensUsed);
+
+        // Calculate coverage separately (Claude doesn't provide it)
+        const coverage = input.standards.requireTests
+          ? await this.checkCoverage(input.files)
+          : { percentage: 0 };
+
+        return {
+          success: true,
+          data: {
+            qualityScore: result.qualityScore,
+            passed: result.passed,
+            issues: result.issues,
+            coverage: coverage.percentage,
+            suggestions: result.suggestions,
+            tokensUsed,
+            cost,
+          },
+        };
+      } else {
+        // Mock implementation (fallback)
+        const [staticAnalysis, securityScan, coverage] = await Promise.all([
+          this.runStaticAnalysis(input.files),
+          input.standards.securityScan
+            ? this.runSecurityScan(input.files)
+            : Promise.resolve({ passed: true, issues: [] }),
+          input.standards.requireTests
+            ? this.checkCoverage(input.files)
+            : Promise.resolve({ percentage: 0 }),
+        ]);
+
+        const qualityScore = this.calculateQualityScore({
+          staticAnalysis,
+          securityScan,
+          coverage,
+        });
+
+        const passed = qualityScore >= input.standards.minQualityScore;
+
+        const suggestions = this.generateSuggestions({
+          staticAnalysis,
+          securityScan,
+          coverage,
           qualityScore,
-          passed,
-          issues: [...staticAnalysis.issues, ...securityScan.issues],
-          coverage: coverage.percentage,
-          suggestions,
-        },
-      };
+          minQualityScore: input.standards.minQualityScore,
+        });
+
+        return {
+          success: true,
+          data: {
+            qualityScore,
+            passed,
+            issues: [...staticAnalysis.issues, ...securityScan.issues],
+            coverage: coverage.percentage,
+            suggestions,
+            tokensUsed: undefined,
+            cost: undefined,
+          },
+        };
+      }
     } catch (error) {
       return {
         success: false,
