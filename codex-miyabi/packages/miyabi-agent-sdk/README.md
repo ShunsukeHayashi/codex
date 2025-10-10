@@ -1,6 +1,6 @@
 # Miyabi Autonomous Agent SDK
 
-[![npm version](https://img.shields.io/npm/v/@codex-miyabi/agent-sdk?label=version&color=blue)](https://www.npmjs.com/package/@codex-miyabi/agent-sdk)
+[![npm version](https://img.shields.io/npm/v/miyabi-agent-sdk?label=version&color=blue)](https://www.npmjs.com/package/miyabi-agent-sdk)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](../../LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D22.0.0-brightgreen)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue)](https://www.typescriptlang.org/)
@@ -44,10 +44,10 @@ A TypeScript SDK implementing 6 specialized AI agents that autonomously analyze 
 
 ```bash
 # Install Miyabi CLI globally
-pnpm install -g @codex-miyabi/agent-sdk
+pnpm install -g miyabi-agent-sdk
 
 # Or use npm
-npm install -g @codex-miyabi/agent-sdk
+npm install -g miyabi-agent-sdk
 
 # Verify installation
 miyabi help
@@ -68,7 +68,7 @@ pnpm exec miyabi help
 
 ```bash
 # Run directly with npx (no installation needed)
-npx @codex-miyabi/agent-sdk analyze 42 --repo owner/repo
+npx miyabi-agent-sdk analyze 42 --repo owner/repo
 ```
 
 ### Using Miyabi CLI (Recommended for Quick Start)
@@ -106,7 +106,7 @@ miyabi help
 ### Programmatic Usage (SDK)
 
 ```typescript
-import { IssueAgent, CodeGenAgent, ReviewAgent, PRAgent } from "@codex-miyabi/agent-sdk";
+import { IssueAgent, CodeGenAgent, ReviewAgent, PRAgent } from "miyabi-agent-sdk";
 
 // Option 1: Use local Claude Code CLI (FREE, default)
 const issueAgent = new IssueAgent({

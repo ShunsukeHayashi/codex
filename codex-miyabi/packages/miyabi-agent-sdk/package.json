@@ -1,5 +1,5 @@
 {
-  "name": "@codex-miyabi/agent-sdk",
+  "name": "miyabi-agent-sdk",
   "version": "0.1.0-alpha.1",
   "description": "Miyabi Autonomous Agent SDK - 7 Agents based on Shikigaku Theory with 100% cost reduction mode",
   "main": "dist/index.js",

@@ -114,7 +114,7 @@ Net Impact:  +6,050 lines (97.6% additions)
 - **Pull Request**: [#16 - Phase 9 Complete](https://github.com/ShunsukeHayashi/codex/pull/16)
 - **Phase 9 Report**: [Issue #14 Comment](https://github.com/ShunsukeHayashi/codex/issues/14#issuecomment-3388554982)
 - **Phase 10 Planning**: [Issue #18](https://github.com/ShunsukeHayashi/codex/issues/18)
-- **npm Package**: [@codex-miyabi/agent-sdk](https://www.npmjs.com/package/@codex-miyabi/agent-sdk)
+- **npm Package**: [miyabi-agent-sdk](https://www.npmjs.com/package/miyabi-agent-sdk)
 
 ### 📝 Migration Guide / 移行ガイド
 
@@ -146,7 +146,7 @@ const agent = new IssueAgent({
 **New in Alpha:**
 ```bash
 # Install globally
-pnpm install -g @codex-miyabi/agent-sdk
+pnpm install -g miyabi-agent-sdk
 
 # Use free mode (default)
 miyabi analyze 42 --repo owner/repo
