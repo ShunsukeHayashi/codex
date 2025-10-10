@@ -1,0 +1,20 @@
+/**
+ * API Clients for Agent SDK
+ *
+ * Phase 8: Real API Integration
+ */
+
+export { AnthropicClient } from "./AnthropicClient.js";
+export type {
+  IssueAnalysisResult,
+  CodeGenerationResult,
+  CodeReviewResult,
+  TokenUsage,
+} from "./AnthropicClient.js";
+
+export { GitHubClient } from "./GitHubClient.js";
+export type {
+  GitHubIssue,
+  GitHubFile,
+  PullRequestInfo,
+} from "./GitHubClient.js";
