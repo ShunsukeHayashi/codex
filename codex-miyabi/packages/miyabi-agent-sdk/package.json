@@ -13,6 +13,8 @@
     "test": "vitest",
     "test:e2e": "node dist/e2e/run-e2e-tests.js",
     "test:e2e:real": "node dist/e2e/run-e2e-real.js",
+    "demo:record": "playwright test demo/miyabi-workflow-demo.spec.ts",
+    "demo:show": "playwright show-report demo/playwright-report",
     "lint": "echo 'Lint skipped (ESLint not installed for Alpha release)'"
   },
   "keywords": [
@@ -46,7 +48,9 @@
     "@octokit/rest": "^20.0.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.0",
     "@types/node": "^20.11.0",
+    "playwright": "^1.56.0",
     "typescript": "^5.3.3",
     "vitest": "^1.2.0"
   },

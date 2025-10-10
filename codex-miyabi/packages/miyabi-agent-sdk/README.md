@@ -384,6 +384,50 @@ if (reviewResult.data.passed) {
 
 ---
 
+## 🎥 Live Demo
+
+Want to see Miyabi in action? We've created a Playwright E2E demo that shows the complete autonomous coding workflow:
+
+### Running the Demo
+
+```bash
+# Install dependencies and build
+pnpm install && pnpm build
+
+# Install Playwright browsers
+pnpm exec playwright install chromium
+
+# Run the demo (creates video automatically)
+pnpm run demo:record
+
+# View the HTML report with demo results
+pnpm run demo:show
+```
+
+### What the Demo Shows
+
+The demo records a complete workflow visualization:
+
+1. **📊 Issue Analysis** - Analyst Agent fetches and analyzes GitHub issue
+2. **💻 Code Generation** - Generator Agent creates solution code
+3. **🔍 Code Review** - Reviewer Agent checks quality metrics
+4. **🚀 PR Creation** - Integrator Agent submits pull request
+
+**Demo Features:**
+- Real-time visual overlays showing each agent's actions
+- Actual SDK API calls with live results
+- Quality indicators with color-coded status
+- Complete workflow summary with cost breakdown
+
+**Video Output:**
+- **Resolution**: 1920x1080 (Full HD)
+- **Location**: `demo/test-results/*/video.webm`
+- **Duration**: ~30-40 seconds
+
+For more details, see [demo/README.md](./demo/README.md).
+
+---
+
 ## Architecture
 
 ### 識学理論 (Shikigaku Theory) Principles

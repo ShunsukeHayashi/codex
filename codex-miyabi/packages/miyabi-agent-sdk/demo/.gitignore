@@ -1,0 +1,20 @@
+# Playwright test artifacts
+test-results/
+playwright-report/
+output/
+
+# Environment variables
+.env
+.env.local
+
+# Node modules (if installed locally)
+node_modules/
+
+# Videos and screenshots
+*.webm
+*.mp4
+*.png
+!screenshots/.gitkeep
+
+# Playwright cache
+.cache/
