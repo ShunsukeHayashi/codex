@@ -666,6 +666,22 @@ Apache License 2.0 - See [LICENSE](../../LICENSE) for details.
 
 ---
 
+## Contact & Support
+
+### 📧 Get in Touch
+
+Have questions, feedback, or need assistance?
+
+**📅 Book a Meeting**: [Schedule a call with our team](https://customer-cloud.jp.larksuite.com/scheduler/0f3b79b2b065aaa8)
+
+**🐛 Report Issues**: [GitHub Issues](https://github.com/ShunsukeHayashi/codex/issues)
+
+**💬 Discussions**: [GitHub Discussions](https://github.com/ShunsukeHayashi/codex/discussions)
+
+We're here to help you get the most out of Miyabi Autonomous Agent SDK!
+
+---
+
 **Generated**: 2025-10-10
 **Phase**: 9 Complete
 **Author**: Claude Code + Shikigaku AI
