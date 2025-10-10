@@ -25,6 +25,10 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./miyabi": {
+      "import": "./dist/miyabi/index.js",
+      "types": "./dist/miyabi/index.d.ts"
     }
   },
   "files": [
