@@ -4,6 +4,9 @@
   "description": "Miyabi Autonomous Agent SDK - 7 Agents based on Shikigaku Theory",
   "main": "dist/index.js",
   "type": "module",
+  "bin": {
+    "miyabi": "./dist/cli/miyabi.js"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",

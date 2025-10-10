@@ -15,6 +15,7 @@ import type {
   AgentOutput,
 } from "../types.js";
 import { AnthropicClient } from "../clients/AnthropicClient.js";
+import { ClaudeCodeClient } from "../clients/ClaudeCodeClient.js";
 import { GitHubClient } from "../clients/GitHubClient.js";
 
 export interface CodeGenInput extends AgentInput {
@@ -29,6 +30,7 @@ export interface CodeGenInput extends AgentInput {
   language?: "typescript" | "rust" | "python" | "go";
   useRealAPI?: boolean;
   anthropicClient?: AnthropicClient;
+  claudeCodeClient?: ClaudeCodeClient; // Phase 9: Claude Code integration
   githubClient?: GitHubClient;
 }
 
@@ -49,14 +51,18 @@ export interface CodeGenOutput extends AgentOutput {
  */
 export class CodeGenAgent {
   private anthropicClient?: AnthropicClient;
+  private claudeCodeClient?: ClaudeCodeClient;
   private githubClient?: GitHubClient;
 
   constructor(config?: {
     anthropicApiKey?: string;
     githubToken?: string;
+    useClaudeCode?: boolean; // Phase 9
   }) {
     if (config) {
-      if (config.anthropicApiKey) {
+      if (config.useClaudeCode) {
+        this.claudeCodeClient = new ClaudeCodeClient();
+      } else if (config.anthropicApiKey) {
         this.anthropicClient = new AnthropicClient(config.anthropicApiKey);
       }
       if (config.githubToken) {
@@ -72,17 +78,19 @@ export class CodeGenAgent {
     try {
       const githubClient = input.githubClient || this.githubClient;
       const anthropicClient = input.anthropicClient || this.anthropicClient;
-      const useRealAPI = input.useRealAPI !== false && !!(githubClient || anthropicClient);
+      const claudeCodeClient = input.claudeCodeClient || this.claudeCodeClient;
+      const useRealAPI = input.useRealAPI !== false && !!(githubClient || anthropicClient || claudeCodeClient);
 
       // 1. 既存コード読み込み（GitHub API - Phase 8で実API統合）
       const context = await this.loadContext(input.context, githubClient);
 
-      // 2. コード生成（Claude Sonnet 4 - Phase 8で実API統合）
+      // 2. コード生成（Claude Sonnet 4 / Claude Code - Phase 9統合）
       const result = await this.generateCode(
         input.requirements,
         context,
         input.language || "typescript",
         anthropicClient,
+        claudeCodeClient,
         useRealAPI
       );
 
@@ -163,6 +171,7 @@ export class CodeGenAgent {
     context: { files: Array<{ path: string; content: string }> },
     language: string,
     anthropicClient?: AnthropicClient,
+    claudeCodeClient?: ClaudeCodeClient,
     useRealAPI?: boolean
   ): Promise<{
     files: GeneratedFile[];
@@ -171,8 +180,28 @@ export class CodeGenAgent {
     tokensUsed?: { input: number; output: number };
     cost?: number;
   }> {
-    if (useRealAPI && anthropicClient) {
-      // Real API implementation
+    if (useRealAPI && claudeCodeClient) {
+      // Phase 9: Claude Code implementation
+      const contextStr = context.files
+        .map((f) => `File: ${f.path}\n\`\`\`\n${f.content}\n\`\`\``)
+        .join("\n\n");
+
+      const result = await claudeCodeClient.generateCode({
+        taskId: "code-gen",
+        requirements,
+        context: contextStr,
+        language,
+      });
+
+      return {
+        files: result.files,
+        tests: result.tests,
+        qualityScore: result.qualityScore,
+        tokensUsed: { input: 0, output: 0 },
+        cost: 0, // Free!
+      };
+    } else if (useRealAPI && anthropicClient) {
+      // Phase 8: Real Anthropic API implementation
       const contextStr = context.files
         .map((f) => `File: ${f.path}\n\`\`\`\n${f.content}\n\`\`\``)
         .join("\n\n");

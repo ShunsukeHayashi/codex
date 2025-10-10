@@ -11,6 +11,7 @@
 
 import type { IssueData, AgentInput, AgentOutput } from "../types.js";
 import { AnthropicClient } from "../clients/AnthropicClient.js";
+import { ClaudeCodeClient } from "../clients/ClaudeCodeClient.js";
 import { GitHubClient } from "../clients/GitHubClient.js";
 
 export interface IssueInput extends AgentInput {
@@ -19,6 +20,7 @@ export interface IssueInput extends AgentInput {
   owner: string;
   useRealAPI?: boolean; // Toggle for real API vs mock
   anthropicClient?: AnthropicClient;
+  claudeCodeClient?: ClaudeCodeClient; // Phase 9: Claude Code integration
   githubClient?: GitHubClient;
 }
 
@@ -36,14 +38,18 @@ export interface IssueOutput extends AgentOutput {
  */
 export class IssueAgent {
   private anthropicClient?: AnthropicClient;
+  private claudeCodeClient?: ClaudeCodeClient;
   private githubClient?: GitHubClient;
 
   constructor(config?: {
     anthropicApiKey?: string;
     githubToken?: string;
+    useClaudeCode?: boolean; // Phase 9: Use Claude Code instead of Anthropic API
   }) {
     if (config) {
-      if (config.anthropicApiKey) {
+      if (config.useClaudeCode) {
+        this.claudeCodeClient = new ClaudeCodeClient();
+      } else if (config.anthropicApiKey) {
         this.anthropicClient = new AnthropicClient(config.anthropicApiKey);
       }
       if (config.githubToken) {
@@ -60,13 +66,19 @@ export class IssueAgent {
       // Select client to use (real API or mock)
       const githubClient = input.githubClient || this.githubClient;
       const anthropicClient = input.anthropicClient || this.anthropicClient;
-      const useRealAPI = input.useRealAPI !== false && !!(githubClient || anthropicClient);
+      const claudeCodeClient = input.claudeCodeClient || this.claudeCodeClient;
+      const useRealAPI = input.useRealAPI !== false && !!(githubClient || anthropicClient || claudeCodeClient);
 
       // 1. Issue取得（GitHub API - Phase 8で実API統合）
       const issue = await this.fetchIssue(input, githubClient);
 
-      // 2. Claude分析（Anthropic API - Phase 8で実API統合）
-      const analysis = await this.analyzeWithClaude(issue, anthropicClient, useRealAPI);
+      // 2. Claude分析（Anthropic API or Claude Code - Phase 9統合）
+      const analysis = await this.analyzeWithClaude(
+        { ...issue, number: issue.number },
+        anthropicClient,
+        claudeCodeClient,
+        useRealAPI
+      );
 
       // 3. ラベル付与（GitHub API - Phase 8で実API統合）
       if (useRealAPI) {
@@ -135,13 +147,16 @@ export class IssueAgent {
    * Claude Sonnet 4で自然言語解析
    *
    * Phase 8: Real Claude API integration
+   * Phase 9: Claude Code CLI integration
    */
   private async analyzeWithClaude(
     issue: {
       title: string;
       body: string | null;
+      number?: number;
     },
     anthropicClient?: AnthropicClient,
+    claudeCodeClient?: ClaudeCodeClient,
     useRealAPI?: boolean
   ): Promise<{
     labels: string[];
@@ -151,8 +166,24 @@ export class IssueAgent {
     tokensUsed?: { input: number; output: number };
     cost?: number;
   }> {
-    if (useRealAPI && anthropicClient) {
-      // Real API implementation
+    if (useRealAPI && claudeCodeClient) {
+      // Phase 9: Claude Code implementation
+      const result = await claudeCodeClient.analyzeIssue({
+        title: issue.title,
+        body: issue.body || "",
+        number: issue.number || 0,
+      });
+
+      return {
+        labels: result.labels,
+        complexity: result.complexity as any,
+        priority: result.priority as any,
+        type: result.type as any,
+        tokensUsed: { input: 0, output: 0 }, // Claude Code doesn't track tokens
+        cost: 0, // Free!
+      };
+    } else if (useRealAPI && anthropicClient) {
+      // Phase 8: Real Anthropic API implementation
       const result = await anthropicClient.analyzeIssue(issue.title, issue.body);
 
       // Calculate cost

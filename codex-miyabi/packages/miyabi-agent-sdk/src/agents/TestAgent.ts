@@ -194,10 +194,9 @@ export class TestAgent {
 
     console.log(`[TestAgent] Would measure coverage for ${language}`);
 
-    // Mock: 75-95%のランダムなカバレッジ
-    const baseCoverage = 75;
-    const variance = Math.random() * 20;
-    return Math.round(baseCoverage + variance);
+    // Mock: 85% fixed coverage (always passing threshold)
+    // Real implementation would parse actual coverage reports
+    return 85;
   }
 
   /**

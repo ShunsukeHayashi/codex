@@ -125,7 +125,7 @@ export class AnthropicClient {
 
     const response = await this.client.messages.create({
       model: this.model,
-      max_tokens: 8192,
+      max_tokens: 16384, // Increased from 8192 to handle larger code generation
       messages: [
         {
           role: "user",
@@ -357,14 +357,43 @@ ${filesContent}
    * Handles responses with or without ```json``` code blocks
    */
   private parseJSON<T>(text: string): T {
-    // Try to extract JSON from code block first
-    const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
-    const jsonStr = jsonMatch ? jsonMatch[1] : text;
+    // Try multiple patterns to extract JSON
 
+    // Pattern 1: ```json ... ``` (with or without newlines)
+    let jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
+    if (jsonMatch) {
+      try {
+        return JSON.parse(jsonMatch[1].trim()) as T;
+      } catch {
+        // Try next pattern
+      }
+    }
+
+    // Pattern 2: ``` ... ``` (generic code block)
+    jsonMatch = text.match(/```\s*([\s\S]*?)\s*```/);
+    if (jsonMatch) {
+      try {
+        return JSON.parse(jsonMatch[1].trim()) as T;
+      } catch {
+        // Try next pattern
+      }
+    }
+
+    // Pattern 3: Look for first { to last }
+    jsonMatch = text.match(/(\{[\s\S]*\})/);
+    if (jsonMatch) {
+      try {
+        return JSON.parse(jsonMatch[1].trim()) as T;
+      } catch {
+        // Try next pattern
+      }
+    }
+
+    // Pattern 4: Try parsing the entire text as-is
     try {
-      return JSON.parse(jsonStr.trim()) as T;
+      return JSON.parse(text.trim()) as T;
     } catch (error) {
-      console.error("[AnthropicClient] Failed to parse JSON:", jsonStr);
+      console.error("[AnthropicClient] Failed to parse JSON:", text.substring(0, 500));
       throw new Error(
         `Failed to parse Claude response as JSON: ${error instanceof Error ? error.message : "Unknown error"}`
       );

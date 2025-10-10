@@ -16,6 +16,7 @@ import type {
   AgentOutput,
 } from "../types.js";
 import { AnthropicClient } from "../clients/AnthropicClient.js";
+import { ClaudeCodeClient } from "../clients/ClaudeCodeClient.js";
 
 export interface ReviewInput extends AgentInput {
   files: GeneratedFile[];
@@ -26,6 +27,7 @@ export interface ReviewInput extends AgentInput {
   };
   useRealAPI?: boolean;
   anthropicClient?: AnthropicClient;
+  claudeCodeClient?: ClaudeCodeClient; // Phase 9
 }
 
 export interface ReviewOutput extends AgentOutput {
@@ -57,12 +59,18 @@ interface CoverageResult {
  */
 export class ReviewAgent {
   private anthropicClient?: AnthropicClient;
+  private claudeCodeClient?: ClaudeCodeClient;
 
   constructor(config?: {
     anthropicApiKey?: string;
+    useClaudeCode?: boolean; // Phase 9
   }) {
-    if (config?.anthropicApiKey) {
-      this.anthropicClient = new AnthropicClient(config.anthropicApiKey);
+    if (config) {
+      if (config.useClaudeCode) {
+        this.claudeCodeClient = new ClaudeCodeClient();
+      } else if (config.anthropicApiKey) {
+        this.anthropicClient = new AnthropicClient(config.anthropicApiKey);
+      }
     }
   }
 
@@ -72,12 +80,36 @@ export class ReviewAgent {
   async review(input: ReviewInput): Promise<ReviewOutput> {
     try {
       const anthropicClient = input.anthropicClient || this.anthropicClient;
-      const useRealAPI = input.useRealAPI !== false && !!anthropicClient;
+      const claudeCodeClient = input.claudeCodeClient || this.claudeCodeClient;
+      const useRealAPI = input.useRealAPI !== false && !!(anthropicClient || claudeCodeClient);
 
       let tokensUsed: { input: number; output: number } | undefined;
       let cost: number | undefined;
 
-      if (useRealAPI && anthropicClient) {
+      if (useRealAPI && claudeCodeClient) {
+        // Phase 9: Claude Code review
+        const result = await claudeCodeClient.reviewCode(
+          input.files.map(f => ({ path: f.path, content: f.content }))
+        );
+
+        return {
+          success: true,
+          data: {
+            qualityScore: result.qualityScore,
+            passed: result.passed,
+            issues: result.issues.map(issue => ({
+              severity: issue.severity as "error" | "warning" | "info",
+              file: issue.file || "",
+              line: issue.line,
+              message: issue.message,
+            })),
+            coverage: 0, // Claude Code doesn't calculate actual coverage
+            suggestions: result.suggestions,
+            tokensUsed: { input: 0, output: 0 },
+            cost: 0, // Free!
+          },
+        };
+      } else if (useRealAPI && anthropicClient) {
         // Real Claude API review
         const result = await anthropicClient.reviewCode(
           input.files.map(f => ({ path: f.path, content: f.content })),
