@@ -5,6 +5,8 @@
  * - 責任: タスクに対してコードを生成
  * - 権限: ファイル作成・変更・削除、テストコード生成、品質スコア自己評価
  * - 階層: Specialist Layer
+ *
+ * Phase 8-2: Real API Integration
  */
 
 import type {
@@ -12,6 +14,8 @@ import type {
   AgentInput,
   AgentOutput,
 } from "../types.js";
+import { AnthropicClient } from "../clients/AnthropicClient.js";
+import { GitHubClient } from "../clients/GitHubClient.js";
 
 export interface CodeGenInput extends AgentInput {
   taskId: string;
@@ -23,6 +27,9 @@ export interface CodeGenInput extends AgentInput {
     relatedFiles: string[];
   };
   language?: "typescript" | "rust" | "python" | "go";
+  useRealAPI?: boolean;
+  anthropicClient?: AnthropicClient;
+  githubClient?: GitHubClient;
 }
 
 export interface CodeGenOutput extends AgentOutput {
@@ -30,6 +37,8 @@ export interface CodeGenOutput extends AgentOutput {
     files: GeneratedFile[];
     tests: GeneratedFile[];
     qualityScore: number; // 0-100（自己評価）
+    tokensUsed?: { input: number; output: number };
+    cost?: number;
   };
 }
 
@@ -39,36 +48,61 @@ export interface CodeGenOutput extends AgentOutput {
  * 既存コード読み込み → Claude生成 → テスト生成 → 品質自己評価
  */
 export class CodeGenAgent {
+  private anthropicClient?: AnthropicClient;
+  private githubClient?: GitHubClient;
+
+  constructor(config?: {
+    anthropicApiKey?: string;
+    githubToken?: string;
+  }) {
+    if (config) {
+      if (config.anthropicApiKey) {
+        this.anthropicClient = new AnthropicClient(config.anthropicApiKey);
+      }
+      if (config.githubToken) {
+        this.githubClient = new GitHubClient(config.githubToken);
+      }
+    }
+  }
+
   /**
    * メイン実行ロジック
    */
   async generate(input: CodeGenInput): Promise<CodeGenOutput> {
     try {
-      // 1. 既存コード読み込み
-      const context = await this.loadContext(input.context);
+      const githubClient = input.githubClient || this.githubClient;
+      const anthropicClient = input.anthropicClient || this.anthropicClient;
+      const useRealAPI = input.useRealAPI !== false && !!(githubClient || anthropicClient);
 
-      // 2. コード生成（Claude Sonnet 4 - Phase 6で統合予定）
-      const generatedFiles = await this.generateCode(
+      // 1. 既存コード読み込み（GitHub API - Phase 8で実API統合）
+      const context = await this.loadContext(input.context, githubClient);
+
+      // 2. コード生成（Claude Sonnet 4 - Phase 8で実API統合）
+      const result = await this.generateCode(
         input.requirements,
         context,
-        input.language || "typescript"
+        input.language || "typescript",
+        anthropicClient,
+        useRealAPI
       );
 
-      // 3. テストコード生成
-      const tests = await this.generateTests(generatedFiles, context);
+      // 3. テストコード生成（Claude already included in result）
+      const tests = result.tests || await this.generateTests(result.files, context);
 
       // 4. 品質スコア自己評価
-      const qualityScore = await this.evaluateQuality(
-        generatedFiles,
+      const qualityScore = result.qualityScore || await this.evaluateQuality(
+        result.files,
         tests
       );
 
       return {
         success: true,
         data: {
-          files: generatedFiles,
+          files: result.files,
           tests,
           qualityScore,
+          tokensUsed: result.tokensUsed,
+          cost: result.cost,
         },
       };
     } catch (error) {
@@ -83,44 +117,98 @@ export class CodeGenAgent {
   /**
    * 既存コンテキスト読み込み
    *
-   * TODO: GitHub API統合（関連ファイル取得）
+   * Phase 8: Real GitHub API integration
    */
-  private async loadContext(context: CodeGenInput["context"]): Promise<{
+  private async loadContext(
+    context: CodeGenInput["context"],
+    githubClient?: GitHubClient
+  ): Promise<{
     files: Array<{ path: string; content: string }>;
   }> {
-    // Mock implementation
-    return {
-      files: context.relatedFiles.map((path) => ({
-        path,
-        content: `// Mock content for ${path}`,
-      })),
-    };
+    if (githubClient && context.relatedFiles.length > 0) {
+      // Real API implementation
+      const files = await Promise.all(
+        context.relatedFiles.map(async (path) => {
+          const file = await githubClient.getFileContent(
+            context.owner,
+            context.repository,
+            path,
+            context.baseBranch
+          );
+          return file ? { path: file.path, content: file.content } : null;
+        })
+      );
+
+      return {
+        files: files.filter((f): f is { path: string; content: string } => f !== null),
+      };
+    } else {
+      // Mock implementation (fallback)
+      return {
+        files: context.relatedFiles.map((path) => ({
+          path,
+          content: `// Mock content for ${path}`,
+        })),
+      };
+    }
   }
 
   /**
    * コード生成（Claude Sonnet 4使用）
    *
-   * TODO: AnthropicClient統合（MCP Server実装後）
+   * Phase 8: Real Claude API integration
    */
   private async generateCode(
     requirements: string,
-    _context: { files: Array<{ path: string; content: string }> },
-    language: string
-  ): Promise<GeneratedFile[]> {
-    // Mock implementation
-    // 実装時には: @anthropic-ai/sdk を使用
+    context: { files: Array<{ path: string; content: string }> },
+    language: string,
+    anthropicClient?: AnthropicClient,
+    useRealAPI?: boolean
+  ): Promise<{
+    files: GeneratedFile[];
+    tests?: GeneratedFile[];
+    qualityScore?: number;
+    tokensUsed?: { input: number; output: number };
+    cost?: number;
+  }> {
+    if (useRealAPI && anthropicClient) {
+      // Real API implementation
+      const contextStr = context.files
+        .map((f) => `File: ${f.path}\n\`\`\`\n${f.content}\n\`\`\``)
+        .join("\n\n");
 
-    // TODO: Claude統合時にプロンプトとコンテキストを使用
-    // const prompt = this.buildCodeGenPrompt(requirements, context, language);
+      const result = await anthropicClient.generateCode(
+        requirements,
+        contextStr,
+        language
+      );
 
-    // 簡易実装: 1つのファイルを生成
-    return [
-      {
-        path: `src/generated/${this.sanitizeFilename(requirements)}.${this.getExtension(language)}`,
-        content: this.generateMockCode(requirements, language),
-        action: "create",
-      },
-    ];
+      // Calculate cost
+      const cost = anthropicClient.calculateCost(result.tokensUsed);
+
+      return {
+        files: result.files,
+        tests: result.tests,
+        qualityScore: result.qualityScore,
+        tokensUsed: result.tokensUsed,
+        cost,
+      };
+    } else {
+      // Mock implementation (fallback)
+      const files: GeneratedFile[] = [
+        {
+          path: `src/generated/${this.sanitizeFilename(requirements)}.${this.getExtension(language)}`,
+          content: this.generateMockCode(requirements, language),
+          action: "create",
+        },
+      ];
+
+      return {
+        files,
+        tokensUsed: undefined,
+        cost: undefined,
+      };
+    }
   }
 
   /**

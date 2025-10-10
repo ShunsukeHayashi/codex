@@ -24,6 +24,7 @@ export interface CodeGenerationResult {
   tests: Array<{
     path: string;
     content: string;
+    action: "create" | "modify" | "delete";
   }>;
   qualityScore: number; // 0-100
 }
@@ -272,7 +273,8 @@ ${context}
   "tests": [
     {
       "path": "src/example.test.ts",
-      "content": "// テストコード（完全なテストコード）"
+      "content": "// テストコード（完全なテストコード）",
+      "action": "create|modify|delete"
     }
   ],
   "qualityScore": 85
