@@ -32,3 +32,28 @@ export type { CodexOptions } from "./codexOptions";
 
 export type { ThreadOptions, ApprovalMode, SandboxMode } from "./threadOptions";
 export type { TurnOptions } from "./turnOptions";
+
+// Miyabi Integration
+export { MiyabiAgents } from "./miyabi/index.js";
+export type {
+  TaskNode,
+  TaskEdge,
+  DAG,
+  AgentInput,
+  AgentOutput,
+  IssueData,
+  IssueAnalysisResult,
+  GeneratedFile,
+  CodeGenerationResult,
+  QualityIssue,
+  QualityReport,
+  PullRequest,
+  PRCreationOptions,
+  TestFailure,
+  TestResult,
+  AgentMetrics,
+  ParallelExecutionOptions,
+  ParallelExecutionResult,
+  MiyabiMCPConfig,
+  BudgetStatus,
+} from "./miyabi/index.js";

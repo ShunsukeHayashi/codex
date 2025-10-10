@@ -1,0 +1,289 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Run daily at 00:00 UTC
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: write
+
+jobs:
+  # ============================================================================
+  # Dependency Scanning
+  # ============================================================================
+  dependency-scan:
+    name: Dependency Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.8.1
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run npm audit (TypeScript)
+        run: |
+          cd sdk/typescript
+          pnpm audit --audit-level=moderate --json > audit-results.json || true
+
+      - name: Check audit results
+        run: |
+          cd sdk/typescript
+          if [ -f audit-results.json ]; then
+            HIGH=$(jq '.metadata.vulnerabilities.high // 0' audit-results.json)
+            CRITICAL=$(jq '.metadata.vulnerabilities.critical // 0' audit-results.json)
+
+            if [ "$CRITICAL" -gt 0 ] || [ "$HIGH" -gt 0 ]; then
+              echo "❌ Found $CRITICAL critical and $HIGH high vulnerabilities"
+              exit 1
+            else
+              echo "✅ No high or critical vulnerabilities found"
+            fi
+          fi
+
+      - name: Upload audit results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit-results
+          path: sdk/typescript/audit-results.json
+          retention-days: 30
+
+  # ============================================================================
+  # Secret Scanning (Gitleaks)
+  # ============================================================================
+  secret-scan:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better detection
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  # ============================================================================
+  # SBOM Generation
+  # ============================================================================
+  sbom-generation:
+    name: SBOM Generation
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.8.1
+
+      - name: Install CycloneDX
+        run: npm install -g @cyclonedx/cyclonedx-npm
+
+      - name: Generate SBOM (TypeScript SDK)
+        run: |
+          cd sdk/typescript
+          cyclonedx-npm --output-file sbom-sdk.json
+
+      - name: Generate SBOM (Miyabi)
+        run: |
+          cd codex-miyabi
+          cyclonedx-npm --output-file sbom-miyabi.json
+
+      - name: Upload SBOM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-files
+          path: |
+            sdk/typescript/sbom-sdk.json
+            codex-miyabi/sbom-miyabi.json
+          retention-days: 90
+
+      - name: Attach SBOM to Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            sdk/typescript/sbom-sdk.json
+            codex-miyabi/sbom-miyabi.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ============================================================================
+  # CodeQL Analysis
+  # ============================================================================
+  codeql-analysis:
+    name: CodeQL Security Analysis
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['javascript', 'typescript']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  # ============================================================================
+  # License Compliance Check
+  # ============================================================================
+  license-compliance:
+    name: License Compliance Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.8.1
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check licenses
+        run: |
+          cd sdk/typescript
+          pnpm licenses list --json > licenses.json
+
+      - name: Verify approved licenses
+        run: |
+          # Check for GPL-3.0 and other copyleft licenses
+          FORBIDDEN_LICENSES="GPL-3.0,AGPL-3.0,SSPL"
+
+          cd sdk/typescript
+          if grep -qE "$FORBIDDEN_LICENSES" licenses.json; then
+            echo "❌ Found forbidden licenses"
+            grep -E "$FORBIDDEN_LICENSES" licenses.json
+            exit 1
+          else
+            echo "✅ All licenses compliant"
+          fi
+
+      - name: Upload license report
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-report
+          path: sdk/typescript/licenses.json
+          retention-days: 30
+
+  # ============================================================================
+  # Security Summary
+  # ============================================================================
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [dependency-scan, secret-scan, sbom-generation, codeql-analysis, license-compliance]
+    if: always()
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Generate Security Summary
+        run: |
+          echo "# Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "## Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.dependency-scan.result }}" == "success" ]; then
+            echo "- ✅ Dependency Scan: PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ Dependency Scan: FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.secret-scan.result }}" == "success" ]; then
+            echo "- ✅ Secret Scan: PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ Secret Scan: FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.sbom-generation.result }}" == "success" ] || [ "${{ needs.sbom-generation.result }}" == "skipped" ]; then
+            echo "- ✅ SBOM Generation: COMPLETED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ SBOM Generation: FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.codeql-analysis.result }}" == "success" ]; then
+            echo "- ✅ CodeQL Analysis: PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ CodeQL Analysis: FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.license-compliance.result }}" == "success" ]; then
+            echo "- ✅ License Compliance: PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ License Compliance: FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Check if all scans passed
+        run: |
+          if [ "${{ needs.dependency-scan.result }}" == "success" ] && \
+             [ "${{ needs.secret-scan.result }}" == "success" ] && \
+             [ "${{ needs.codeql-analysis.result }}" == "success" ] && \
+             [ "${{ needs.license-compliance.result }}" == "success" ]; then
+            echo "✅ All security scans passed"
+            exit 0
+          else
+            echo "❌ Some security scans failed"
+            exit 1
+          fi
