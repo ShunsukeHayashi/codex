@@ -3,6 +3,8 @@
  * Phase 8: Real API Integration
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { MiyabiAgents } from "../../src/miyabi/MiyabiAgents.js";
 import { MCPParseError } from "../../src/miyabi/types.js";
 
@@ -47,8 +49,8 @@ describe("MCP Response Parsing", () => {
       // Access private method via casting
       const result = (miyabi as any).parseMCPResponse(validMCPResponse);
       expect(result).toBeDefined();
-      expect(result.issue).toBeDefined();
-      expect(result.issue.number).toBe(42);
+      expect((result as any).issue).toBeDefined();
+      expect((result as any).issue.number).toBe(42);
     });
 
     it("should throw error for MCP error response", () => {
@@ -174,8 +176,8 @@ describe("MCP Response Parsing", () => {
       };
 
       const result = (miyabi as any).parseIssueAnalysisResponse(validResponse);
-      expect(result.issue.number).toBe(42);
-      expect(result.suggestedLabels).toContain("feature");
+      expect((result as any).issue.number).toBe(42);
+      expect((result as any).suggestedLabels).toContain("feature");
     });
 
     it("should throw MCPParseError for invalid schema", () => {
@@ -226,8 +228,8 @@ describe("MCP Response Parsing", () => {
       };
 
       const result = (miyabi as any).parseCodeGenerationResponse(validResponse);
-      expect(result.files).toHaveLength(1);
-      expect(result.files[0].path).toBe("src/test.ts");
+      expect((result as any).files).toHaveLength(1);
+      expect((result as any).files[0].path).toBe("src/test.ts");
     });
   });
 
@@ -253,8 +255,8 @@ describe("MCP Response Parsing", () => {
       };
 
       const result = (miyabi as any).parseQualityReportResponse(validResponse);
-      expect(result.qualityScore).toBe(85);
-      expect(result.passed).toBe(true);
+      expect((result as any).qualityScore).toBe(85);
+      expect((result as any).passed).toBe(true);
     });
   });
 
@@ -281,8 +283,8 @@ describe("MCP Response Parsing", () => {
       };
 
       const result = (miyabi as any).parsePullRequestResponse(validResponse);
-      expect(result.number).toBe(123);
-      expect(result.status).toBe("open");
+      expect((result as any).number).toBe(123);
+      expect((result as any).status).toBe("open");
     });
   });
 
@@ -309,8 +311,8 @@ describe("MCP Response Parsing", () => {
       };
 
       const result = (miyabi as any).parseTestResultResponse(validResponse);
-      expect(result.passed).toBe(true);
-      expect(result.totalTests).toBe(100);
+      expect((result as any).passed).toBe(true);
+      expect((result as any).totalTests).toBe(100);
     });
   });
 
@@ -341,8 +343,8 @@ describe("MCP Response Parsing", () => {
       };
 
       const result = (miyabi as any).parseDAGResponse(validResponse);
-      expect(result.nodes).toHaveLength(1);
-      expect(result.nodes[0].id).toBe("1");
+      expect((result as any).nodes).toHaveLength(1);
+      expect((result as any).nodes[0].id).toBe("1");
     });
   });
 
@@ -369,11 +371,9 @@ describe("MCP Response Parsing", () => {
         ],
       };
 
-      const result = (miyabi as any).parseParallelExecutionResponse(
-        validResponse
-      );
-      expect(result.success).toBe(true);
-      expect(result.totalExecutionTime).toBe(5000);
+      const result = (miyabi as any).parseParallelExecutionResponse(validResponse);
+      expect((result as any).success).toBe(true);
+      expect((result as any).totalExecutionTime).toBe(5000);
     });
   });
 
@@ -401,8 +401,8 @@ describe("MCP Response Parsing", () => {
       };
 
       const result = (miyabi as any).parseBudgetStatusResponse(validResponse);
-      expect(result.monthlyBudgetUsd).toBe(500);
-      expect(result.usagePercentage).toBe(50);
+      expect((result as any).monthlyBudgetUsd).toBe(500);
+      expect((result as any).usagePercentage).toBe(50);
     });
   });
 
