@@ -92,6 +92,11 @@ export class ReviewAgent {
           input.files.map(f => ({ path: f.path, content: f.content }))
         );
 
+        // Calculate coverage separately (Claude Code doesn't provide it)
+        const coverage = input.standards.requireTests
+          ? await this.checkCoverage(input.files)
+          : { percentage: 0 };
+
         return {
           success: true,
           data: {
@@ -103,7 +108,7 @@ export class ReviewAgent {
               line: issue.line,
               message: issue.message,
             })),
-            coverage: 0, // Claude Code doesn't calculate actual coverage
+            coverage: coverage.percentage,
             suggestions: result.suggestions,
             tokensUsed: { input: 0, output: 0 },
             cost: 0, // Free!
@@ -119,13 +124,18 @@ export class ReviewAgent {
         tokensUsed = result.tokensUsed;
         cost = anthropicClient.calculateCost(result.tokensUsed);
 
+        // Calculate coverage separately (Claude doesn't provide it)
+        const coverage = input.standards.requireTests
+          ? await this.checkCoverage(input.files)
+          : { percentage: 0 };
+
         return {
           success: true,
           data: {
             qualityScore: result.qualityScore,
             passed: result.passed,
             issues: result.issues,
-            coverage: 0, // Claude doesn't calculate actual coverage
+            coverage: coverage.percentage,
             suggestions: result.suggestions,
             tokensUsed,
             cost,
