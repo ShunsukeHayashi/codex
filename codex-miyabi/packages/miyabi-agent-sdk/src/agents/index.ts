@@ -19,8 +19,8 @@ export type { ReviewInput, ReviewOutput } from "./ReviewAgent.js";
 export { PRAgent } from "./PRAgent.js";
 export type { PRInput, PROutput } from "./PRAgent.js";
 
-// TODO: Phase 6 P2で追加
-// export { TestAgent } from "./TestAgent.js";
+export { TestAgent } from "./TestAgent.js";
+export type { TestInput, TestOutput, TestFailure } from "./TestAgent.js";
 
 // TODO: Phase 6 P3で追加
 // export { DeploymentAgent } from "./DeploymentAgent.js";

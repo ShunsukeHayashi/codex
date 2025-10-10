@@ -25,6 +25,7 @@ export {
   CodeGenAgent,
   ReviewAgent,
   PRAgent,
+  TestAgent,
   type CoordinatorInput,
   type CoordinatorOutput,
   type IssueInput,
@@ -35,4 +36,7 @@ export {
   type ReviewOutput,
   type PRInput,
   type PROutput,
+  type TestInput,
+  type TestOutput,
+  type TestFailure,
 } from "./agents/index.js";
