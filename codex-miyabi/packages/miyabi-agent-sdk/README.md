@@ -1,8 +1,24 @@
 # Miyabi Autonomous Agent SDK
 
+[![npm version](https://img.shields.io/npm/v/@codex-miyabi/agent-sdk?label=version&color=blue)](https://www.npmjs.com/package/@codex-miyabi/agent-sdk)
+[![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](../../LICENSE)
+[![Node](https://img.shields.io/badge/node-%3E%3D22.0.0-brightgreen)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue)](https://www.typescriptlang.org/)
+[![Phase](https://img.shields.io/badge/Phase-9%20Complete-success)](https://github.com/ShunsukeHayashi/codex/pull/16)
+
 **Autonomous Development Framework based on 識学理論 (Shikigaku Theory)**
 
-A production-ready TypeScript SDK implementing 6 specialized AI agents that autonomously analyze GitHub issues, generate code, review quality, and create pull requests using Claude Sonnet 4 and GitHub APIs.
+> ⚠️ **Alpha Release**: This is an early access version (0.1.0-alpha.1). APIs may change. Production use with caution.
+
+A TypeScript SDK implementing 6 specialized AI agents that autonomously analyze GitHub issues, generate code, review quality, and create pull requests using Claude Sonnet 4 and GitHub APIs - with **100% cost reduction** via local Claude Code CLI integration.
+
+**🎯 Key Features**:
+- 🆓 **100% Cost Reduction**: Local execution via Claude Code CLI (no API fees)
+- 🤖 **6 Specialized Agents**: Issue → Code → Review → Test → PR → Deploy
+- 🏛️ **識学理論 Architecture**: Clear responsibility, authority delegation, hierarchical design
+- 📊 **Quality Gates**: 80+ score threshold, 80%+ coverage requirement
+- 💰 **Economic Management**: Budget tracking with circuit breaker
+- 🔄 **Hybrid API**: Seamless switching between free (local) and paid (API) modes
 
 ---
 
@@ -636,16 +652,23 @@ pnpm run lint
 - ✅ **Phase 0-7**: Foundation complete (MCP Server, 6 Agents, E2E Tests)
 - ✅ **Phase 8**: Real API integration complete (Anthropic API + GitHub API)
 - ✅ **Phase 9**: Claude Code CLI integration complete (100% cost reduction!)
-- ⏭️ **Phase 10**: Production deployment - Planned
+- 🔄 **Phase 10**: Real tool integration - In Progress (see [Issue #18](https://github.com/ShunsukeHayashi/codex/issues/18))
 
-**Current Version**: 0.2.0
-**Status**: Production Ready (Phase 9 Complete)
+**Current Version**: 0.1.0-alpha.1
+**Status**: Alpha Release (Phase 9 Complete, Phase 10 In Progress)
+**Stability**: Early Access - APIs may change
 
 **Phase 9 Highlights:**
 - 🆓 **Free local execution** via Claude Code CLI
 - 💰 **$60/month savings** for typical usage (100 requests/month)
 - 🔄 **Hybrid architecture** supporting both free and paid modes
 - 🛠️ **Miyabi CLI tool** for easy command-line usage
+
+**Known Limitations** (to be addressed in Phase 10):
+- ESLint, Gitleaks, Vitest integrations are currently mocked
+- E2E tests: 1/6 scenarios fully operational
+- Quality thresholds need fine-tuning for complex scenarios
+- See [PR #16](https://github.com/ShunsukeHayashi/codex/pull/16) for detailed status
 
 ---
 

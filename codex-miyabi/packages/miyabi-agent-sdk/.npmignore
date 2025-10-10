@@ -1,0 +1,75 @@
+# .npmignore - npm publish exclusion list
+
+# Source files (publish only dist/)
+src/
+*.ts
+!*.d.ts
+tsconfig.json
+
+# Tests
+*.test.ts
+*.test.js
+__tests__/
+__mocks__/
+coverage/
+.nyc_output/
+
+# E2E tests (keep documentation, exclude test files)
+e2e/*.test.ts
+e2e/test-data/
+
+# Development files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation (markdown files are included by default)
+# But exclude development-specific docs
+INTEGRATION_PLAN*.md
+AGENTS_OPERATION_PLAN.md
+.ai/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies (will be installed by user)
+node_modules/
+
+# Build artifacts to exclude
+*.map
+*.log
+
+# Temp files
+tmp/
+temp/
+
+# OS
+Thumbs.db
+
+# Keep these files (override exclusions)
+!dist/**/*.d.ts
+!dist/**/*.js
+!dist/**/*.json
